@@ -1,0 +1,31 @@
+services:
+  api:
+    build:
+      context: .
+      dockerfile: Dockerfile.api
+    env_file:
+      - .env
+    ports:
+      - "8000:8000"
+
+  frontend:
+    build:
+      context: .
+      dockerfile: Dockerfile.frontend
+    depends_on:
+      - api
+    environment:
+      VITE_API_PROXY_TARGET: http://api:8000
+      VITE_SUPABASE_URL: ${VITE_SUPABASE_URL}
+      VITE_SUPABASE_ANON_KEY: ${VITE_SUPABASE_ANON_KEY}
+      VITE_DEV_EMAIL: ${VITE_DEV_EMAIL}
+      VITE_DEV_PASSWORD: ${VITE_DEV_PASSWORD}
+      VITE_DEV_GARDEN_ID: ${VITE_DEV_GARDEN_ID:-garden_poc_1}
+    ports:
+      - "5173:5173"
+    volumes:
+      - .:/app
+      - frontend_node_modules:/app/node_modules
+
+volumes:
+  frontend_node_modules:

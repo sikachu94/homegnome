@@ -4,7 +4,7 @@ import {
   Droplets, Scissors, Bug, Sparkles, MapPin, CloudRain, Snowflake, Thermometer,
   Camera, Box, Layers, ImagePlus, Apple, Leaf, Carrot, Flower2, Wheat,
 } from "lucide-react";
-import { apiChat, apiExtract } from "./lib/api";
+import { apiChat, apiExtract } from "./api.js";
 
 // ---------------------------------------------------------------------------
 // Static reference data

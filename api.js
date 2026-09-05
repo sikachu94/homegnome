@@ -1,4 +1,4 @@
-import { supabase, ensureDevSession } from "./supabaseClient";
+import { supabase, ensureDevSession } from "./Supabaseclient.js";
 
 // Same-origin by default (fine for a Vercel deploy where the frontend and
 // api/ live under one domain). Only set VITE_API_BASE_URL if the frontend
