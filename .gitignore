@@ -2,3 +2,6 @@
 .venv
 CLAUDE.md
 /docs
+__pycache__/
+*.pyc
+.vercel

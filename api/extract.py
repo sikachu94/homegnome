@@ -1,40 +1,89 @@
-from typing import Optional, Dict, Any
-from fastapi import Depends
-from pydantic import BaseModel, Field
-from google.genai import types
+import json
+from typing import Any, Dict, List, Optional
+
+from fastapi import APIRouter, Depends, HTTPException
+from pydantic import BaseModel, Field, ValidationError
+
+from .deps import EXTRACT_MODEL, get_current_user, mistral_client, supabase, verify_garden_ownership
+
+router = APIRouter()
+
 
 class EventDraft(BaseModel):
-    planting_id: Optional[str] = Field(description="ID from the known plantings list, or null for garden-level events.")
+    planting_id: Optional[str] = Field(
+        default=None, description="ID from the known plantings list, or null for garden-level events."
+    )
     event_type: str = Field(description="Allowed types: watering, harvest, pest_sighting, rainfall, etc.")
     category: str = Field(description="E.g., measurement, action, observation, lifecycle")
-    payload: Dict[str, Any] = Field(description="Matching fields for the specific event type.")
-    note: Optional[str] = Field(description="Short human-readable note for anything not captured structurally.")
+    payload: Dict[str, Any] = Field(
+        default_factory=dict, description="Matching fields for the specific event type."
+    )
+    note: Optional[str] = Field(
+        default=None, description="Short human-readable note for anything not captured structurally."
+    )
+
+
+class EventDraftList(BaseModel):
+    """Wraps the drafts in an object — most JSON-schema/JSON-mode setups expect an object at the root."""
+
+    drafts: List[EventDraft] = Field(default_factory=list)
+
 
 class ExtractRequest(BaseModel):
     note: str
     garden_id: str
 
-@app.post("/api/extract")
+
+@router.post("/api/extract")
 def extract_events(req: ExtractRequest, user_id: str = Depends(get_current_user)):
-    # 1. Fetch user's active plantings from Supabase to provide as context
-    plantings_res = supabase.table("plantings").select("id, nickname, species").eq("garden_id", req.garden_id).execute()
-    plantings_context = "\n".join([f"{p['id']} | {p['nickname']} | {p['species']}" for p in plantings_res.data])
+    verify_garden_ownership(req.garden_id, user_id)
 
-    system_instruction = f"""
-    You convert a freeform note into structured event-log entries for a garden tracker.
-    Known plantings:
-    {plantings_context}
-    """
-
-    # 2. Call Gemini with strict JSON schema enforcement
-    response = ai_client.models.generate_content(
-        model='gemini-2.5-flash',
-        contents=req.note,
-        config=types.GenerateContentConfig(
-            system_instruction=system_instruction,
-            response_mime_type="application/json",
-            response_schema=list[EventDraft],
-        ),
+    # 1. Fetch this garden's active plantings to give the model as context
+    plantings_res = (
+        supabase.table("plantings")
+        .select("id, nickname, species")
+        .eq("garden_id", req.garden_id)
+        .execute()
     )
-    
-    return {"drafts": response.text} # Returns a guaranteed JSON array string
+    plantings_context = "\n".join(f"{p['id']} | {p['nickname']} | {p['species']}" for p in plantings_res.data)
+
+    schema = EventDraftList.model_json_schema()
+    system_instruction = f"""You convert a home gardener's freeform note into structured event-log entries for homeGnome, a garden tracker.
+
+Known plantings (id | nickname | species):
+{plantings_context}
+
+Respond with ONLY a JSON object matching this schema, no prose, no markdown fences:
+{json.dumps(schema)}
+
+For garden-level event types (e.g. rainfall, frost) set "planting_id" to null.
+Never propose photo_log from text alone — photos are attached by the user directly, not inferred.
+If the note describes more than one distinct thing, include multiple items in "drafts".
+If nothing matches a known planting or event type, return {{"drafts": []}}."""
+
+    # 2. Call Mistral in JSON mode
+    try:
+        response = mistral_client.chat.complete(
+            model=EXTRACT_MODEL,
+            messages=[
+                {"role": "system", "content": system_instruction},
+                {"role": "user", "content": req.note},
+            ],
+            response_format={"type": "json_object"},
+        )
+    except Exception as exc:
+        raise HTTPException(status_code=502, detail=f"Mistral request failed: {exc}")
+
+    raw = response.choices[0].message.content
+
+    # 3. Validate the model's output against our schema. Also tolerates a
+    # bare JSON array in case the model ignores the "wrap in drafts" instruction.
+    try:
+        parsed = EventDraftList.model_validate_json(raw)
+    except ValidationError:
+        try:
+            parsed = EventDraftList.model_validate({"drafts": json.loads(raw)})
+        except Exception:
+            raise HTTPException(status_code=502, detail="Model returned a response that didn't match the expected schema.")
+
+    return {"drafts": [d.model_dump() for d in parsed.drafts]}
