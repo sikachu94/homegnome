@@ -1,15 +1,14 @@
 import { useState, useEffect, useCallback } from "react";
-import { storageGet, storageSet } from "../lib/storage.js";
+import { storageSet } from "../lib/storage.js";
 import { uid } from "../lib/format.js";
 import { fileToDataUrl } from "../lib/imageUtils.js";
-import { GARDEN_ID, DEFAULT_GARDEN, SEED_CONTAINERS, SEED_PLANTINGS, SEED_EVENTS } from "../lib/seedData.js";
+import { GARDEN_ID, DEFAULT_GARDEN } from "../lib/seedData.js";
+import { apiGardens, apiCreateEvent, apiCreatePlanting, apiUpdateGarden } from "../api.js";
 
 /**
  * Owns plantings/containers/events/garden state and their persistence.
- * TEMPORARY: persistence is localStorage-only (see lib/storage.js) until
- * step 2 (real gardens/plantings/events CRUD against the backend) lands —
- * every `persist`/`persistGarden` call below is the seam that step will
- * replace with API calls.
+ * Supabase is the source of truth. Local storage is only used as an offline
+ * fallback for the demo shell when the API cannot be reached.
  */
 export function useGardenData() {
   const [plantings, setPlantings] = useState(null);
@@ -17,25 +16,7 @@ export function useGardenData() {
   const [events, setEvents] = useState(null);
   const [garden, setGarden] = useState(null);
   const [loaded, setLoaded] = useState(false);
-
-  useEffect(() => {
-    (async () => {
-      let p, c, e, g;
-      try { const r = await storageGet("plantings"); p = r ? JSON.parse(r.value) : SEED_PLANTINGS; } catch { p = SEED_PLANTINGS; }
-      try { const r = await storageGet("containers"); c = r ? JSON.parse(r.value) : SEED_CONTAINERS; } catch { c = SEED_CONTAINERS; }
-      try { const r = await storageGet("events"); e = r ? JSON.parse(r.value) : SEED_EVENTS; } catch { e = SEED_EVENTS; }
-      try {
-        const r = await storageGet("garden");
-        g = r ? JSON.parse(r.value) : null;
-      } catch { g = null; }
-      if (!g) {
-        g = { ...DEFAULT_GARDEN, established_at: new Date().toISOString() };
-        try { await storageSet("garden", JSON.stringify(g)); } catch (err) { console.error(err); }
-      }
-      setPlantings(p); setContainers(c); setEvents(e); setGarden(g);
-      setLoaded(true);
-    })();
-  }, []);
+  const [loadError, setLoadError] = useState(null);
 
   const persist = useCallback(async (nextPlantings, nextEvents, nextContainers) => {
     try {
@@ -49,6 +30,37 @@ export function useGardenData() {
     try { await storageSet("garden", JSON.stringify(g)); } catch (err) { console.error(err); }
   }, []);
 
+  const applyGarden = useCallback(async (data) => {
+    const nextGarden = { ...data, label: data.label || data.name };
+    setGarden(nextGarden);
+    setPlantings(data.plantings || []);
+    setContainers(data.containers || []);
+    setEvents(data.events || []);
+    await persist(data.plantings || [], data.events || [], data.containers || []);
+    await persistGarden(nextGarden);
+  }, [persist, persistGarden]);
+
+  useEffect(() => {
+    (async () => {
+      try {
+        const response = await apiGardens();
+        const remoteGarden = response.gardens?.find((item) => item.id === GARDEN_ID);
+        if (!remoteGarden) throw new Error(`Configured garden ${GARDEN_ID} was not returned by the API`);
+        await applyGarden(remoteGarden);
+        setLoadError(null);
+        setLoaded(true);
+      } catch (err) {
+        console.error("Unable to load garden from backend", err);
+        setLoadError("Your garden could not be loaded from the backend. Check your connection and sign-in, then try again.");
+        setPlantings([]);
+        setContainers([]);
+        setEvents([]);
+        setGarden(null);
+        setLoaded(true);
+      }
+    })();
+  }, [applyGarden]);
+
   const updateGardenLocal = useCallback((patch) => {
     setGarden((g) => ({ ...(g || DEFAULT_GARDEN), ...patch }));
   }, []);
@@ -56,7 +68,9 @@ export function useGardenData() {
   const updateGardenAndPersist = useCallback((patch) => {
     setGarden((g) => {
       const next = { ...(g || DEFAULT_GARDEN), ...patch };
-      persistGarden(next);
+      apiUpdateGarden(GARDEN_ID, patch)
+        .then(({ garden: saved }) => persistGarden({ ...saved, label: saved.label || saved.name }))
+        .catch((err) => console.error("Garden update failed", err));
       return next;
     });
   }, [persistGarden]);
@@ -64,12 +78,12 @@ export function useGardenData() {
   /** Appends one event or an array of events, then persists. */
   const addEvent = useCallback(async (eventOrEvents) => {
     const toAdd = Array.isArray(eventOrEvents) ? eventOrEvents : [eventOrEvents];
-    setEvents((prev) => {
-      const next = [...prev, ...toAdd];
-      persist(null, next);
-      return next;
-    });
-  }, [persist]);
+    const created = await Promise.all(toAdd.map((event) => apiCreateEvent(GARDEN_ID, event)));
+    const response = await apiGardens();
+    const remoteGarden = response.gardens?.find((item) => item.id === GARDEN_ID);
+    if (remoteGarden) await applyGarden(remoteGarden);
+    else setEvents((prev) => [...prev, ...created.map(({ event }) => event)]);
+  }, [applyGarden]);
 
   const addPlanting = useCallback(async (form) => {
     if (!form.nickname.trim()) return;
@@ -97,12 +111,20 @@ export function useGardenData() {
       media: form.photo ? [form.photo] : undefined,
       confidence: "observed",
     };
-    const nextPlantings = [...plantings, planting];
-    const nextContainers = [...containers, container];
-    const nextEvents = [...events, containerSetupEvent, plantingSetupEvent];
-    setPlantings(nextPlantings); setContainers(nextContainers); setEvents(nextEvents);
-    await persist(nextPlantings, nextEvents, nextContainers);
-  }, [plantings, containers, events, persist]);
+    const response = await apiCreatePlanting(GARDEN_ID, {
+      container,
+      planting: { ...planting, garden_id: GARDEN_ID },
+      events: [containerSetupEvent, plantingSetupEvent],
+    });
+    const aggregate = await apiGardens();
+    const remoteGarden = aggregate.gardens?.find((item) => item.id === GARDEN_ID);
+    if (remoteGarden) await applyGarden(remoteGarden);
+    else {
+      setPlantings((prev) => [...prev, response.planting]);
+      setContainers((prev) => [...prev, response.container]);
+      setEvents((prev) => [...prev, ...response.events]);
+    }
+  }, [applyGarden]);
 
   const addPlantingPhoto = useCallback(async (plantingId, file) => {
     if (!file) return;
@@ -114,14 +136,15 @@ export function useGardenData() {
   }, [addEvent]);
 
   const resetDemo = useCallback(async () => {
-    const freshGarden = { ...DEFAULT_GARDEN, established_at: new Date().toISOString() };
-    setPlantings(SEED_PLANTINGS); setContainers(SEED_CONTAINERS); setEvents(SEED_EVENTS); setGarden(freshGarden);
-    await persist(SEED_PLANTINGS, SEED_EVENTS, SEED_CONTAINERS);
-    await persistGarden(freshGarden);
-  }, [persist, persistGarden]);
+    const response = await apiGardens();
+    const remoteGarden = response.gardens?.find((item) => item.id === GARDEN_ID);
+    if (!remoteGarden) throw new Error(`Configured garden ${GARDEN_ID} was not returned by the API`);
+    await applyGarden(remoteGarden);
+    setLoadError(null);
+  }, [applyGarden]);
 
   return {
-    loaded, plantings, containers, events, garden,
+    loaded, loadError, plantings, containers, events, garden,
     addEvent, addPlanting, addPlantingPhoto,
     updateGardenLocal, updateGardenAndPersist, persistGarden,
     resetDemo,

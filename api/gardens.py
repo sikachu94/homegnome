@@ -1,14 +1,14 @@
 from fastapi import APIRouter, Depends
 
-from .deps import get_current_user, supabase
+from .deps import get_current_user, get_db
 
 router = APIRouter()
 
 
 @router.get("/api/gardens")
-def list_gardens(user_id: str = Depends(get_current_user)):
+def list_gardens(user_id: str = Depends(get_current_user), db = Depends(get_db)):
     gardens = (
-        supabase.table("gardens")
+        db.table("gardens")
         .select("id, name, type, location, timezone, established_at, notes")
         .eq("user_id", user_id)
         .execute()
@@ -20,9 +20,9 @@ def list_gardens(user_id: str = Depends(get_current_user)):
     containers = []
     events = []
     if garden_ids:
-        plantings = supabase.table("plantings").select("*").in_("garden_id", garden_ids).execute().data
-        containers = supabase.table("containers").select("*").in_("garden_id", garden_ids).execute().data
-        events = supabase.table("garden_events").select("*").in_("garden_id", garden_ids).execute().data
+        plantings = db.table("plantings").select("*").in_("garden_id", garden_ids).execute().data
+        containers = db.table("containers").select("*").in_("garden_id", garden_ids).execute().data
+        events = db.table("garden_events").select("*").in_("garden_id", garden_ids).execute().data
 
     return {
         "gardens": [

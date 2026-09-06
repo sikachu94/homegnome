@@ -14,7 +14,7 @@ export default function App() {
   const [resetKey, setResetKey] = useState(0);
 
   const {
-    loaded, plantings, containers, events, garden,
+    loaded, loadError, plantings, containers, events, garden,
     addEvent, addPlanting, addPlantingPhoto,
     updateGardenLocal, updateGardenAndPersist, persistGarden,
     resetDemo: resetGardenData,
@@ -36,6 +36,15 @@ export default function App() {
     return (
       <div className="sg-root sg-loading">
         <Loader2 className="spin" size={22} /><span>Loading your garden…</span>
+      </div>
+    );
+  }
+
+  if (loadError) {
+    return (
+      <div className="sg-root sg-loading">
+        <span className="sg-error">{loadError}</span>
+        <button className="sg-secondary sm" onClick={() => window.location.reload()}>Retry</button>
       </div>
     );
   }

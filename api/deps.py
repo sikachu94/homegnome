@@ -29,44 +29,39 @@ MISTRAL_API_KEY = _require_env("MISTRAL_API_KEY")
 CHAT_MODEL = os.environ.get("MISTRAL_CHAT_MODEL", "mistral-medium-latest")
 EXTRACT_MODEL = os.environ.get("MISTRAL_EXTRACT_MODEL", "ministral-8b-latest")
 
-supabase: Client = create_client(SUPABASE_URL, SUPABASE_ANON_KEY)
+_auth_client: Client = create_client(SUPABASE_URL, SUPABASE_ANON_KEY)
 mistral_client = Mistral(api_key=MISTRAL_API_KEY)
 
 
-def get_current_user(authorization: str = Header(...)) -> str:
-    """Validates the Supabase-issued bearer token and returns the user id."""
+def _bearer_token(authorization: str) -> str:
     parts = authorization.split(" ", 1)
     if len(parts) != 2 or parts[0].lower() != "bearer":
         raise HTTPException(status_code=401, detail="Malformed Authorization header")
-    token = parts[1]
+    return parts[1]
 
+
+def get_current_user(authorization: str = Header(...)) -> str:
+    token = _bearer_token(authorization)
     try:
-        user_response = supabase.auth.get_user(token)
+        user_response = _auth_client.auth.get_user(token)  # stateless call, token passed explicitly
     except Exception:
         raise HTTPException(status_code=401, detail="Authentication failed")
-
     if not user_response or not user_response.user:
         raise HTTPException(status_code=401, detail="Invalid token")
-
-    supabase.postgrest.auth(token)
     return user_response.user.id
 
 
-def verify_garden_ownership(garden_id: str, user_id: str) -> None:
-    """
-    Confirms the requesting user owns this garden before any read/write.
+def get_db(authorization: str = Header(...)) -> Client:
+    """One Supabase client per request, authed as the caller. Never shared."""
+    token = _bearer_token(authorization)
+    client = create_client(SUPABASE_URL, SUPABASE_ANON_KEY)
+    client.postgrest.auth(token)
+    return client
 
-    Assumes a `gardens` table with `id` and `user_id` columns — adjust the
-    table/column names here if your schema differs. Without this check,
-    any authenticated user could pass any garden_id and read/write it.
-    """
+
+def verify_garden_ownership(db: Client, garden_id: str, user_id: str) -> None:
     result = (
-        supabase.table("gardens")
-        .select("id")
-        .eq("id", garden_id)
-        .eq("user_id", user_id)
-        .limit(1)
-        .execute()
+        db.table("gardens").select("id").eq("id", garden_id).eq("user_id", user_id).limit(1).execute()
     )
     if not result.data:
         raise HTTPException(status_code=404, detail="Garden not found")

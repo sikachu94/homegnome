@@ -2,6 +2,7 @@
 .venv
 .claude
 .agents
+.pi
 node_modules/
 dist/
 CLAUDE.md
