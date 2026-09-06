@@ -8,10 +8,20 @@ import { PRESET_LOCATIONS } from "./lib/species.js";
 import { CaptureTab } from "./components/CaptureTab.jsx";
 import { PlantsTab } from "./components/PlantsTab.jsx";
 import { ChatTab } from "./components/ChatTab.jsx";
+import { useToast, Toast } from "./lib/toast.jsx";
+
+// Shorter labels for the bottom nav (mockup); top nav keeps the fuller labels
+// on wider screens where there's room.
+const TABS = [
+  { id: "capture", icon: NotebookPen, shortLabel: "Log" },
+  { id: "plants", icon: Sprout, shortLabel: "Garden" },
+  { id: "chat", icon: MessageCircle, shortLabel: "Ask" },
+];
 
 export default function App() {
   const [tab, setTab] = useState("capture");
   const [resetKey, setResetKey] = useState(0);
+  const { toast, showToast } = useToast();
 
   const {
     loaded, loadError, plantings, containers, events, garden, gardenId,
@@ -27,9 +37,14 @@ export default function App() {
   } = useWeather({ garden, events: events || [], addEvent, updateGardenAndPersist });
 
   const resetDemo = async () => {
-    await resetGardenData();
-    resetWeather();
-    setResetKey((k) => k + 1);
+    try {
+      await resetGardenData();
+      resetWeather();
+      setResetKey((k) => k + 1);
+      showToast("Demo data reset.");
+    } catch (err) {
+      showToast("Couldn't reset demo data — try again.", "error");
+    }
   };
 
   if (!loaded) {
@@ -51,17 +66,25 @@ export default function App() {
 
   return (
     <div className="sg-root">
+      <Toast toast={toast} />
+
       <header className="sg-header">
         <div className="sg-brand"><img src={gnomeLogo} alt="myGnomie logo" /><span>myGnomie</span></div>
-        <button className="sg-reset" onClick={resetDemo} title="Reset demo data"><RotateCcw size={14} /> Reset demo</button>
+        <button className="sg-reset" onClick={resetDemo} title="Reset demo data" aria-label="Reset demo data">
+          <RotateCcw size={14} />
+        </button>
       </header>
 
       {!garden?.location ? (
         <div className="sg-weatherbar setup">
           <span>Set your garden's location for weather-aware advice</span>
           <div className="sg-weather-actions">
-            <button className="sg-secondary sm" onClick={useMyLocation} disabled={locating}>{locating ? <Loader2 className="spin" size={12} /> : <MapPin size={12} />} Use my location</button>
-            {PRESET_LOCATIONS.map((loc) => <button key={loc.label} className="sg-chip" onClick={() => setGardenLocation(loc)}>{loc.label}</button>)}
+            <button className="sg-secondary sm" onClick={useMyLocation} disabled={locating} aria-label="Use my current location">
+              {locating ? <Loader2 className="spin" size={12} /> : <MapPin size={12} />} Use my location
+            </button>
+            {PRESET_LOCATIONS.map((loc) => (
+              <button key={loc.label} className="sg-chip" onClick={() => setGardenLocation(loc)}>{loc.label}</button>
+            ))}
           </div>
           {weatherError && <span className="sg-weather-err">{weatherError}</span>}
         </div>
@@ -69,38 +92,68 @@ export default function App() {
         <div className="sg-weatherbar">
           <span className="sg-weather-loc"><MapPin size={13} /> {garden.label}</span>
           {weather ? (
-            <span className="sg-weather-data"><Thermometer size={13} /> {Math.round(weather.current.temperature_2m)}°C <CloudRain size={13} /> {weather.daily.precipitation_sum[0]}mm today</span>
-          ) : weatherError ? <span className="sg-weather-err">{weatherError}</span> : <span className="sg-weather-data"><Loader2 className="spin" size={12} /> Checking weather…</span>}
-          <button className="sg-reset sm" onClick={refreshWeather}><RotateCcw size={12} /> Refresh</button>
-          <button className="sg-reset sm" onClick={clearGardenLocation}>Change location</button>
+            <span className="sg-weather-data">
+              <Thermometer size={13} /> {Math.round(weather.current.temperature_2m)}°C
+              <CloudRain size={13} /> {weather.daily.precipitation_sum[0]}mm today
+            </span>
+          ) : weatherError ? (
+            <span className="sg-weather-err">{weatherError}</span>
+          ) : (
+            <span className="sg-weather-data"><Loader2 className="spin" size={12} /> Checking weather…</span>
+          )}
+          <button className="sg-reset sm" onClick={refreshWeather} aria-label="Refresh weather">
+            <RotateCcw size={12} />
+          </button>
+          <button className="sg-reset sm" onClick={clearGardenLocation} aria-label="Change garden location">
+            Change
+          </button>
         </div>
       )}
 
-      <nav className="sg-tabs">
-        <button className={tab === "capture" ? "active" : ""} onClick={() => setTab("capture")}><NotebookPen size={16} /> Log</button>
-        <button className={tab === "plants" ? "active" : ""} onClick={() => setTab("plants")}><Sprout size={16} /> My garden</button>
-        <button className={tab === "chat" ? "active" : ""} onClick={() => setTab("chat")}><MessageCircle size={16} /> Ask myGnomie</button>
-      </nav>
 
       {/* All three tabs stay mounted (toggled with `hidden`, not unmounted via
           `&&`) so in-progress state -- the capture note/drafts, the chat
-          thread, the add-planting form -- survives switching tabs, matching
-          the original single-file behavior where this state lived in App. */}
+          thread, the add-planting form -- survives switching tabs. */}
       <main className="sg-main">
         <div hidden={tab !== "capture"}>
-          <CaptureTab gardenId={gardenId} plantings={plantings} containers={containers} events={events} addEvent={addEvent} resetSignal={resetKey} />
+          <CaptureTab
+            gardenId={gardenId} plantings={plantings} containers={containers} events={events}
+            addEvent={addEvent} resetSignal={resetKey} showToast={showToast}
+          />
         </div>
         <div hidden={tab !== "plants"}>
           <PlantsTab
             garden={garden} plantings={plantings} containers={containers} events={events}
             addPlanting={addPlanting} addPlantingPhoto={addPlantingPhoto}
-            updateGardenLocal={updateGardenLocal} updateGardenAndPersist={updateGardenAndPersist} persistGarden={persistGarden}
+            updateGardenLocal={updateGardenLocal} updateGardenAndPersist={updateGardenAndPersist}
+            persistGarden={persistGarden} showToast={showToast}
           />
         </div>
         <div hidden={tab !== "chat"}>
-          <ChatTab gardenId={gardenId} plantings={plantings} containers={containers} events={events} garden={garden} weather={weather} onGardenChanged={refreshGardenData} resetSignal={resetKey} />
+          <ChatTab
+            gardenId={gardenId} plantings={plantings} containers={containers} events={events}
+            garden={garden} weather={weather} onGardenChanged={refreshGardenData} resetSignal={resetKey}
+          />
         </div>
       </main>
+
+      {/* Bottom nav: mobile only (CSS hides it above 640px, shows .sg-tabs instead) */}
+      <nav className="sg-bottom-nav" aria-label="Primary">
+        <div className="sg-bottom-nav-row">
+          {TABS.map(({ id, icon: Icon, shortLabel }) => (
+            <button
+              key={id}
+              className={tab === id ? "active" : ""}
+              onClick={() => setTab(id)}
+              aria-label={shortLabel}
+              aria-current={tab === id ? "page" : undefined}
+            >
+              <Icon size={20} />
+              <span>{shortLabel}</span>
+            </button>
+          ))}
+        </div>
+      </nav>
     </div>
   );
 }

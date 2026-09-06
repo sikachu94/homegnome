@@ -1,100 +1,849 @@
 @import url('https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;9..144,600&family=Inter:wght@400;500;600&display=swap');
 
-.sg-root { --ink:#1F2A22; --canvas:#EEF1E7; --panel:#FFFFFF; --moss:#4B6B4F; --moss-dark:#37502F; --clay:#8B5E3C; --gold:#B08D1F; --line:#DBD7C6; --muted:#6B7566;
-  font-family:'Inter',sans-serif; color:var(--ink); background:var(--canvas); min-height:600px; display:flex; flex-direction:column; border-radius:12px; overflow:hidden; }
-.sg-loading { align-items:center; justify-content:center; flex-direction:row; gap:8px; padding:60px; }
-.spin { animation:sg-spin 1s linear infinite; }
-@keyframes sg-spin { to { transform:rotate(360deg); } }
-.sg-header { display:flex; align-items:center; justify-content:space-between; padding:16px 20px; border-bottom:1px solid var(--line); background:var(--panel); }
-.sg-brand { display:flex; align-items:center; gap:8px; font-family:'Fraunces',serif; font-weight:600; font-size:24px; color:var(--moss-dark); }
-.sg-brand img { width:78px; height:78px; object-fit:cover; border-radius:50%; }
-.sg-reset { display:flex; align-items:center; gap:6px; font-size:12px; color:var(--muted); background:none; border:none; cursor:pointer; padding:6px 8px; border-radius:6px; }
-.sg-reset:hover { background:var(--canvas); }
-.sg-reset.sm { padding:4px 7px; font-size:11px; }
-.sg-weatherbar { display:flex; align-items:center; gap:12px; flex-wrap:wrap; padding:8px 20px; background:#F4F6EE; border-bottom:1px solid var(--line); font-size:12.5px; }
-.sg-weatherbar.setup { color:var(--muted); }
-.sg-weather-actions { display:flex; align-items:center; gap:6px; flex-wrap:wrap; }
-.sg-chip { border:1px solid var(--line); background:#fff; border-radius:999px; padding:5px 10px; font-size:12px; cursor:pointer; color:var(--ink); }
-.sg-weather-loc { display:flex; align-items:center; gap:5px; font-weight:600; }
-.sg-weather-data { display:flex; align-items:center; gap:10px; color:var(--muted); }
-.sg-weather-err { color:#B23B34; }
-.sg-tabs { display:flex; gap:4px; padding:8px 16px; background:var(--panel); border-bottom:1px solid var(--line); }
-.sg-tabs button { display:flex; align-items:center; gap:6px; padding:8px 14px; border-radius:8px; border:none; background:none; font-size:13.5px; font-weight:500; color:var(--muted); cursor:pointer; font-family:'Inter',sans-serif; }
-.sg-tabs button.active { background:var(--canvas); color:var(--moss-dark); }
-.sg-main { flex:1; overflow-y:auto; padding:24px; }
-.sg-panel h1 { font-family:'Fraunces',serif; font-size:22px; font-weight:600; margin:0 0 4px; }
-.sg-panel h2 { font-size:14px; font-weight:600; margin:0 0 10px; color:var(--moss-dark); }
-.sg-sub { color:var(--muted); font-size:13.5px; margin:0 0 18px; max-width:60ch; }
-.sg-capture-box { background:var(--panel); border:1px solid var(--line); border-radius:12px; padding:14px; }
-.sg-capture-box textarea { width:100%; border:none; resize:vertical; font-family:'Inter',sans-serif; font-size:14px; outline:none; background:none; }
-.sg-capture-actions { display:flex; justify-content:flex-end; gap:8px; margin-top:8px; }
-.sg-primary, .sg-secondary { display:flex; align-items:center; gap:6px; border:none; border-radius:8px; padding:9px 14px; font-size:13px; font-weight:600; cursor:pointer; font-family:'Inter',sans-serif; }
-.sg-primary { background:var(--moss); color:#fff; }
-.sg-primary:disabled { opacity:0.45; cursor:default; }
-.sg-secondary { background:var(--canvas); color:var(--ink); }
-.sg-secondary:disabled { opacity:0.45; cursor:default; }
-.sg-primary.sm, .sg-secondary.sm { padding:6px 10px; font-size:12px; }
-.sg-mic { display:flex; align-items:center; gap:6px; border:1px solid var(--line); background:#fff; border-radius:8px; padding:9px 12px; font-size:13px; cursor:pointer; }
-.sg-mic.on { background:#FDEDEC; border-color:#C0574C; color:#C0574C; }
-.sg-error { color:#B23B34; font-size:12.5px; margin-top:8px; }
-.sg-drafts { margin-top:22px; }
-.sg-drafts-head { display:flex; align-items:center; justify-content:space-between; margin-bottom:10px; }
-.sg-draft-card { background:var(--panel); border:1px solid var(--line); border-radius:10px; padding:12px; margin-bottom:10px; display:flex; flex-direction:column; gap:8px; }
-.sg-draft-row { display:flex; align-items:center; gap:8px; flex-wrap:wrap; }
-.sg-form-label { font-size:11px; font-weight:600; color:var(--muted); text-transform:uppercase; letter-spacing:0.03em; margin-top:2px; }
-.sg-pill { background:var(--canvas); color:var(--moss-dark); font-size:11px; font-weight:600; padding:3px 8px; border-radius:999px; }
-.sg-pill.muted { color:var(--muted); }
-.sg-icon-btn { margin-left:auto; background:none; border:none; cursor:pointer; color:var(--muted); }
-.sg-draft-payload { font-size:12px; color:var(--muted); font-family:monospace; word-break:break-all; }
-.sg-draft-note { font-size:12.5px; font-style:italic; color:var(--ink); }
-.sg-draft-card select, .sg-draft-card input { flex:1; border:1px solid var(--line); border-radius:6px; padding:7px 8px; font-size:13px; font-family:'Inter',sans-serif; background:#fff; min-width:110px; }
-.sg-soil-total { font-size:11px; color:var(--muted); padding:4px 8px; }
-.sg-soil-total.warn { color:var(--clay); font-weight:600; }
-.sg-photo-add { display:flex; align-items:center; gap:6px; border:1px dashed var(--line); border-radius:6px; padding:7px 10px; font-size:12px; color:var(--muted); cursor:pointer; background:#fff; }
-.sg-photo-add.wide { flex:1; }
-.sg-photo-thumb { position:relative; width:44px; height:44px; border-radius:6px; overflow:hidden; flex-shrink:0; }
-.sg-photo-thumb img { width:100%; height:100%; object-fit:cover; }
-.sg-photo-thumb button { position:absolute; top:2px; right:2px; background:rgba(0,0,0,0.55); border:none; border-radius:50%; width:16px; height:16px; display:flex; align-items:center; justify-content:center; color:#fff; cursor:pointer; }
-.sg-recent { margin-top:28px; }
-.sg-event-row { display:flex; align-items:flex-start; gap:10px; padding:8px 0; border-bottom:1px solid var(--line); }
-.sg-evt-icon { color:var(--moss); margin-top:2px; flex-shrink:0; }
-.sg-event-title { font-size:13.5px; font-weight:500; }
-.sg-event-meta { font-size:12px; color:var(--muted); }
-.sg-event-thumb { width:32px; height:32px; border-radius:6px; object-fit:cover; margin-left:auto; }
-.sg-footnote { color:var(--muted); font-size:12px; margin-top:18px; }
-.sg-garden-overview { background:var(--panel); border:1px solid var(--line); border-radius:12px; padding:16px; display:flex; flex-direction:column; gap:12px; }
-.sg-garden-row { display:flex; gap:10px; flex-wrap:wrap; }
-.sg-garden-name { font-family:'Fraunces',serif; font-size:17px; font-weight:600; border:none; background:none; padding:4px 2px; flex:1; min-width:160px; color:var(--ink); outline:none; }
-.sg-garden-row select { border:1px solid var(--line); border-radius:6px; padding:6px 8px; font-size:13px; font-family:'Inter',sans-serif; background:#fff; }
-.sg-garden-stats { display:flex; gap:22px; flex-wrap:wrap; padding-top:8px; border-top:1px solid var(--line); }
-.sg-garden-stats div { display:flex; flex-direction:column; gap:2px; }
-.sg-garden-stats span { font-size:10.5px; color:var(--muted); text-transform:uppercase; letter-spacing:0.03em; }
-.sg-garden-stats strong { font-size:14px; }
-.sg-garden-notes { border:1px solid var(--line); border-radius:8px; padding:8px 10px; font-size:13px; font-family:'Inter',sans-serif; resize:vertical; background:#fff; }
-.sg-plant-grid { display:grid; grid-template-columns:repeat(auto-fill, minmax(230px, 1fr)); gap:14px; }
-.sg-plant-card { background:var(--panel); border:1px solid var(--line); border-radius:12px; overflow:hidden; display:flex; flex-direction:column; gap:10px; padding-bottom:14px; }
-.sg-cover { position:relative; width:100%; height:120px; background:var(--canvas); display:flex; align-items:center; justify-content:center; }
-.sg-cover img { width:100%; height:100%; object-fit:cover; }
-.sg-cover-generic { color:var(--moss); opacity:0.55; }
-.sg-cover-upload { position:absolute; bottom:6px; right:6px; background:#fff; border:1px solid var(--line); border-radius:50%; width:26px; height:26px; display:flex; align-items:center; justify-content:center; cursor:pointer; color:var(--moss-dark); }
-.sg-plant-head { display:flex; justify-content:space-between; align-items:flex-start; padding:0 14px; }
-.sg-plant-name { font-weight:600; font-size:14.5px; }
-.sg-plant-species { font-size:12px; color:var(--muted); font-style:italic; }
-.sg-stage { background:var(--canvas); color:var(--moss-dark); font-size:11px; font-weight:600; padding:3px 9px; border-radius:999px; text-transform:capitalize; }
-.sg-stage.ended { background:#F1EEE6; color:var(--muted); }
-.sg-plant-stats { display:flex; gap:14px; padding:0 14px; }
-.sg-plant-stats div { display:flex; flex-direction:column; gap:2px; }
-.sg-plant-stats span { font-size:10.5px; color:var(--muted); text-transform:uppercase; letter-spacing:0.03em; }
-.sg-plant-stats strong { font-size:14px; }
-.sg-container-info { display:flex; flex-direction:column; gap:3px; padding:8px 14px 0; border-top:1px solid var(--line); margin:0 14px; font-size:11.5px; color:var(--muted); }
-.sg-container-info span { display:flex; align-items:center; gap:6px; }
-.sg-issue { display:flex; align-items:center; gap:6px; background:#FBF0E4; color:var(--clay); font-size:12px; padding:6px 8px; border-radius:6px; margin:0 14px; }
-.sg-reference { font-size:11.5px; color:var(--muted); border-top:1px solid var(--line); padding-top:8px; margin:0 14px; }
-.sg-chat-panel { display:flex; flex-direction:column; height:100%; }
-.sg-chat-thread { flex:1; overflow-y:auto; display:flex; flex-direction:column; gap:10px; padding:10px 0; min-height:280px; }
-.sg-chat-empty { color:var(--muted); font-size:13px; padding:20px; text-align:center; }
-.sg-chat-msg { max-width:75%; padding:10px 13px; border-radius:12px; font-size:13.5px; line-height:1.5; white-space:pre-wrap; }
-.sg-chat-msg.user { align-self:flex-end; background:var(--moss); color:#fff; }
-.sg-chat-msg.assistant { align-self:flex-start; background:var(--panel); border:1px solid var(--line); }
-.sg-chat-input { display:flex; gap:8px; margin-top:12px; }
-.sg-chat-input input { flex:1; border:1px solid var(--line); border-radius:8px; padding:10px 12px; font-size:13.5px; font-family:'Inter',sans-serif; }
+/* --muted darkened from #6B7566 to pass WCAG AA at small sizes (was ~4.1:1 on white) */
+.sg-root {
+  --ink: #1F2A22;
+  --canvas: #EEF1E7;
+  --panel: #FFFFFF;
+  --moss: #4B6B4F;
+  --moss-dark: #37502F;
+  --clay: #8B5E3C;
+  --gold: #B08D1F;
+  --line: #DBD7C6;
+  --muted: #5A6357;
+  font-family: 'Inter', sans-serif;
+  color: var(--ink);
+  background: var(--canvas);
+  height: 100dvh;
+  height: 100vh;
+  /* dvh with vh fallback for older browsers */
+  display: flex;
+  flex-direction: column;
+  border-radius: 12px;
+  overflow: hidden;
+}
+
+.sg-loading {
+  align-items: center;
+  justify-content: center;
+  flex-direction: row;
+  gap: 8px;
+  padding: 60px;
+}
+
+.spin {
+  animation: sg-spin 1s linear infinite;
+}
+
+@keyframes sg-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+/* Header: compact by default, even smaller on narrow screens */
+.sg-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 12px 16px;
+  border-bottom: 1px solid var(--line);
+  background: var(--panel);
+  flex-shrink: 0;
+}
+
+.sg-brand {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-family: 'Fraunces', serif;
+  font-weight: 600;
+  font-size: 18px;
+  color: var(--moss-dark);
+}
+
+.sg-brand img {
+  width: 32px;
+  height: 32px;
+  object-fit: cover;
+  border-radius: 50%;
+}
+
+/* Icon-only / small buttons: pad hit area to 44px without growing the visible icon */
+.sg-reset {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  font-size: 12px;
+  color: var(--muted);
+  background: none;
+  border: none;
+  cursor: pointer;
+  min-width: 44px;
+  min-height: 44px;
+  padding: 6px 10px;
+  border-radius: 6px;
+}
+
+.sg-reset:hover {
+  background: var(--canvas);
+}
+
+.sg-reset.sm {
+  min-width: 36px;
+  min-height: 36px;
+  padding: 4px 8px;
+  font-size: 11px;
+}
+
+.sg-weatherbar {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex-wrap: wrap;
+  padding: 8px 16px;
+  background: #F4F6EE;
+  border-bottom: 1px solid var(--line);
+  font-size: 12.5px;
+  flex-shrink: 0;
+}
+
+.sg-weatherbar.setup {
+  color: var(--muted);
+}
+
+.sg-weather-actions {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex-wrap: wrap;
+}
+
+.sg-chip {
+  border: 1px solid var(--line);
+  background: #fff;
+  border-radius: 999px;
+  padding: 8px 12px;
+  font-size: 13px;
+  cursor: pointer;
+  color: var(--ink);
+  min-height: 36px;
+}
+
+.sg-weather-loc {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  font-weight: 600;
+}
+
+.sg-weather-data {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  color: var(--muted);
+}
+
+.sg-weather-err {
+  color: #B23B34;
+}
+
+/* Top tabs are now used only on wide screens; mobile gets a fixed bottom nav (see below) */
+.sg-tabs {
+  display: flex;
+  gap: 4px;
+  padding: 8px 16px;
+  background: var(--panel);
+  border-bottom: 1px solid var(--line);
+  flex-shrink: 0;
+}
+
+.sg-tabs button {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 10px 14px;
+  border-radius: 8px;
+  border: none;
+  background: none;
+  font-size: 13.5px;
+  font-weight: 500;
+  color: var(--muted);
+  cursor: pointer;
+  font-family: 'Inter', sans-serif;
+  min-height: 44px;
+}
+
+.sg-tabs button.active {
+  background: var(--canvas);
+  color: var(--moss-dark);
+}
+
+/* Single scroll region: only .sg-main scrolls. Bottom nav padding reserves space so content isn't hidden behind it on mobile. */
+.sg-main {
+  flex: 1;
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
+  padding: 20px;
+}
+
+.sg-panel h1 {
+  font-family: 'Fraunces', serif;
+  font-size: 22px;
+  font-weight: 600;
+  margin: 0 0 4px;
+}
+
+.sg-panel h2 {
+  font-size: 14px;
+  font-weight: 600;
+  margin: 0 0 10px;
+  color: var(--moss-dark);
+}
+
+.sg-sub {
+  color: var(--muted);
+  font-size: 13.5px;
+  margin: 0 0 18px;
+  max-width: 60ch;
+}
+
+.sg-capture-box {
+  background: var(--panel);
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  padding: 14px;
+}
+
+/* 16px minimum — anything smaller triggers iOS Safari's auto-zoom-on-focus */
+.sg-capture-box textarea {
+  width: 100%;
+  border: none;
+  resize: vertical;
+  font-family: 'Inter', sans-serif;
+  font-size: 16px;
+  outline: none;
+  background: none;
+}
+
+.sg-capture-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+  margin-top: 8px;
+}
+
+.sg-primary,
+.sg-secondary {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  border: none;
+  border-radius: 8px;
+  padding: 10px 14px;
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+  font-family: 'Inter', sans-serif;
+  min-height: 44px;
+}
+
+.sg-primary {
+  background: var(--moss);
+  color: #fff;
+}
+
+.sg-primary:disabled {
+  opacity: 0.45;
+  cursor: default;
+}
+
+.sg-secondary {
+  background: var(--canvas);
+  color: var(--ink);
+}
+
+.sg-secondary:disabled {
+  opacity: 0.45;
+  cursor: default;
+}
+
+.sg-primary.sm,
+.sg-secondary.sm {
+  padding: 8px 12px;
+  font-size: 13px;
+  min-height: 36px;
+}
+
+.sg-mic {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  border: 1px solid var(--line);
+  background: #fff;
+  border-radius: 8px;
+  padding: 10px 12px;
+  font-size: 14px;
+  cursor: pointer;
+  min-height: 44px;
+}
+
+.sg-mic.on {
+  background: #FDEDEC;
+  border-color: #C0574C;
+  color: #C0574C;
+}
+
+.sg-error {
+  color: #B23B34;
+  font-size: 12.5px;
+  margin-top: 8px;
+}
+
+/* Lightweight success/error toast for write actions (no library needed) */
+.sg-toast {
+  position: fixed;
+  left: 50%;
+  bottom: calc(64px + env(safe-area-inset-bottom) + 12px);
+  transform: translateX(-50%);
+  background: var(--ink);
+  color: #fff;
+  padding: 10px 16px;
+  border-radius: 8px;
+  font-size: 13px;
+  z-index: 50;
+  box-shadow: 0 4px 14px rgba(0, 0, 0, 0.2);
+  max-width: 90%;
+  text-align: center;
+}
+
+.sg-toast.error {
+  background: #B23B34;
+}
+
+.sg-drafts {
+  margin-top: 22px;
+}
+
+.sg-drafts-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 10px;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.sg-draft-card {
+  background: var(--panel);
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  padding: 12px;
+  margin-bottom: 10px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.sg-draft-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.sg-form-label {
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--muted);
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+  margin-top: 2px;
+}
+
+.sg-pill {
+  background: var(--canvas);
+  color: var(--moss-dark);
+  font-size: 11px;
+  font-weight: 600;
+  padding: 3px 8px;
+  border-radius: 999px;
+}
+
+.sg-pill.muted {
+  color: var(--muted);
+}
+
+.sg-icon-btn {
+  margin-left: auto;
+  background: none;
+  border: none;
+  cursor: pointer;
+  color: var(--muted);
+  min-width: 44px;
+  min-height: 44px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.sg-draft-payload {
+  font-size: 12px;
+  color: var(--muted);
+  font-family: monospace;
+  word-break: break-all;
+}
+
+.sg-draft-note {
+  font-size: 12.5px;
+  font-style: italic;
+  color: var(--ink);
+}
+
+.sg-draft-card select,
+.sg-draft-card input {
+  flex: 1;
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  padding: 10px 8px;
+  font-size: 16px;
+  font-family: 'Inter', sans-serif;
+  background: #fff;
+  min-width: 110px;
+  min-height: 44px;
+}
+
+.sg-soil-total {
+  font-size: 11px;
+  color: var(--muted);
+  padding: 4px 8px;
+}
+
+.sg-soil-total.warn {
+  color: var(--clay);
+  font-weight: 600;
+}
+
+.sg-photo-add {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  border: 1px dashed var(--line);
+  border-radius: 6px;
+  padding: 10px;
+  font-size: 13px;
+  color: var(--muted);
+  cursor: pointer;
+  background: #fff;
+  min-height: 44px;
+}
+
+.sg-photo-add.wide {
+  flex: 1;
+}
+
+/* Photo thumbnails: keep the visible thumb small but give the remove button a real hit area */
+.sg-photo-thumb {
+  position: relative;
+  width: 44px;
+  height: 44px;
+  border-radius: 6px;
+  overflow: hidden;
+  flex-shrink: 0;
+}
+
+.sg-photo-thumb img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.sg-photo-thumb button {
+  position: absolute;
+  top: -8px;
+  right: -8px;
+  background: rgba(0, 0, 0, 0.65);
+  border: none;
+  border-radius: 50%;
+  width: 28px;
+  height: 28px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #fff;
+  cursor: pointer;
+}
+
+.sg-recent {
+  margin-top: 28px;
+}
+
+.sg-event-row {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  padding: 10px 0;
+  border-bottom: 1px solid var(--line);
+}
+
+.sg-evt-icon {
+  color: var(--moss);
+  margin-top: 2px;
+  flex-shrink: 0;
+}
+
+.sg-event-title {
+  font-size: 13.5px;
+  font-weight: 500;
+}
+
+.sg-event-meta {
+  font-size: 12px;
+  color: var(--muted);
+}
+
+.sg-event-thumb {
+  width: 32px;
+  height: 32px;
+  border-radius: 6px;
+  object-fit: cover;
+  margin-left: auto;
+}
+
+.sg-footnote {
+  color: var(--muted);
+  font-size: 12px;
+  margin-top: 18px;
+}
+
+.sg-garden-overview {
+  background: var(--panel);
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  padding: 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.sg-garden-row {
+  display: flex;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.sg-garden-name {
+  font-family: 'Fraunces', serif;
+  font-size: 17px;
+  font-weight: 600;
+  border: none;
+  background: none;
+  padding: 4px 2px;
+  flex: 1;
+  min-width: 160px;
+  color: var(--ink);
+  outline: none;
+  min-height: 44px;
+}
+
+.sg-garden-row select {
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  padding: 8px;
+  font-size: 16px;
+  font-family: 'Inter', sans-serif;
+  background: #fff;
+  min-height: 44px;
+}
+
+.sg-garden-stats {
+  display: flex;
+  gap: 22px;
+  flex-wrap: wrap;
+  padding-top: 8px;
+  border-top: 1px solid var(--line);
+}
+
+.sg-garden-stats div {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.sg-garden-stats span {
+  font-size: 10.5px;
+  color: var(--muted);
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+}
+
+.sg-garden-stats strong {
+  font-size: 14px;
+}
+
+.sg-garden-notes {
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  padding: 10px;
+  font-size: 16px;
+  font-family: 'Inter', sans-serif;
+  resize: vertical;
+  background: #fff;
+}
+
+.sg-plant-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(230px, 1fr));
+  gap: 14px;
+}
+
+.sg-plant-card {
+  background: var(--panel);
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding-bottom: 14px;
+}
+
+.sg-cover {
+  position: relative;
+  width: 100%;
+  height: 120px;
+  background: var(--canvas);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.sg-cover img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.sg-cover-generic {
+  color: var(--moss);
+  opacity: 0.55;
+}
+
+.sg-cover-upload {
+  position: absolute;
+  bottom: 6px;
+  right: 6px;
+  background: #fff;
+  border: 1px solid var(--line);
+  border-radius: 50%;
+  width: 36px;
+  height: 36px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  color: var(--moss-dark);
+}
+
+.sg-plant-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  padding: 0 14px;
+}
+
+.sg-plant-name {
+  font-weight: 600;
+  font-size: 14.5px;
+}
+
+.sg-plant-species {
+  font-size: 12px;
+  color: var(--muted);
+  font-style: italic;
+}
+
+.sg-stage {
+  background: var(--canvas);
+  color: var(--moss-dark);
+  font-size: 11px;
+  font-weight: 600;
+  padding: 3px 9px;
+  border-radius: 999px;
+  text-transform: capitalize;
+}
+
+.sg-stage.ended {
+  background: #F1EEE6;
+  color: var(--muted);
+}
+
+.sg-plant-stats {
+  display: flex;
+  gap: 14px;
+  padding: 0 14px;
+}
+
+.sg-plant-stats div {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.sg-plant-stats span {
+  font-size: 10.5px;
+  color: var(--muted);
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+}
+
+.sg-plant-stats strong {
+  font-size: 14px;
+}
+
+.sg-container-info {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  padding: 8px 14px 0;
+  border-top: 1px solid var(--line);
+  margin: 0 14px;
+  font-size: 11.5px;
+  color: var(--muted);
+}
+
+.sg-container-info span {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.sg-issue {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  background: #FBF0E4;
+  color: var(--clay);
+  font-size: 12px;
+  padding: 6px 8px;
+  border-radius: 6px;
+  margin: 0 14px;
+}
+
+.sg-reference {
+  font-size: 11.5px;
+  color: var(--muted);
+  border-top: 1px solid var(--line);
+  padding-top: 8px;
+  margin: 0 14px;
+}
+
+.sg-chat-panel {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+}
+
+.sg-chat-thread {
+  flex: 1;
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding: 10px 0;
+  min-height: 200px;
+}
+
+.sg-chat-empty {
+  color: var(--muted);
+  font-size: 13px;
+  padding: 20px;
+  text-align: center;
+}
+
+.sg-chat-msg {
+  max-width: 75%;
+  padding: 10px 13px;
+  border-radius: 12px;
+  font-size: 13.5px;
+  line-height: 1.5;
+  white-space: pre-wrap;
+}
+
+.sg-chat-msg.user {
+  align-self: flex-end;
+  background: var(--moss);
+  color: #fff;
+}
+
+.sg-chat-msg.assistant {
+  align-self: flex-start;
+  background: var(--panel);
+  border: 1px solid var(--line);
+}
+
+.sg-chat-input {
+  display: flex;
+  gap: 8px;
+  margin-top: 12px;
+}
+
+.sg-chat-input input {
+  flex: 1;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  padding: 10px 12px;
+  font-size: 16px;
+  font-family: 'Inter', sans-serif;
+  min-height: 44px;
+}
+
+/* Single nav pattern, used at every width — no top tabs, no breakpoint swap */
+.sg-tabs {
+  display: none;
+}
+
+/* component removed from markup below; rule kept only in case anything still references it */
+
+.sg-bottom-nav {
+  display: block;
+  position: sticky;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  background: var(--panel);
+  border-top: 1px solid var(--line);
+  padding-bottom: env(safe-area-inset-bottom);
+  flex-shrink: 0;
+  z-index: 10;
+}
+
+.sg-bottom-nav-row {
+  display: flex;
+  max-width: 480px;
+  /* keeps the nav from stretching thin across a wide desktop window */
+  margin: 0 auto;
+}
+
+.sg-bottom-nav button {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 2px;
+  min-height: 56px;
+  border: none;
+  background: none;
+  color: var(--muted);
+  font-size: 11px;
+  font-family: 'Inter', sans-serif;
+  cursor: pointer;
+}
+
+.sg-bottom-nav button.active {
+  color: var(--moss-dark);
+}
