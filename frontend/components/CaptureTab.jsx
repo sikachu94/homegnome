@@ -46,6 +46,27 @@ export function CaptureTab({ gardenId, plantings, containers, events, addEvent, 
       setExtractError("Couldn't reach the extraction service — check your connection and that you're signed in.");
     } finally { setExtracting(false); }
   };
+  function summarizeDraft(d) {
+    const p = d.payload || {};
+    switch (d.event_type) {
+      case "watering":
+        return `Watered${p.amount_l ? ` — ${p.amount_l}L` : ""}${p.method ? `, by ${p.method}` : ""}.`;
+      case "harvest":
+        return `Harvested${p.quantity ? ` ${p.quantity}${p.unit ? ` ${p.unit}` : ""}` : ""}${p.quality ? `, ${p.quality} quality` : ""}.`;
+      case "pest_sighting":
+        return `Spotted ${p.pest || "a pest"}${p.severity ? `, ${p.severity} severity` : ""}.`;
+      case "disease_sighting":
+        return `Signs of ${p.disease || "disease"}${p.severity ? `, ${p.severity}` : ""}.`;
+      case "rainfall":
+        return `${p.amount_mm ? `${p.amount_mm}mm of rain` : "Rain"} recorded.`;
+      case "frost":
+        return `Frost${p.severity ? ` (${p.severity})` : ""} recorded.`;
+      case "growth_measurement":
+        return `${p.metric || "Measurement"}: ${p.value ?? "—"}${p.unit ? ` ${p.unit}` : ""}.`;
+      default:
+        return "New entry.";
+    }
+  }
 
   const updateDraftPlanting = (draftId, plantingId) => setDrafts((ds) => ds.map((d) => (d.draft_id === draftId ? { ...d, planting_id: plantingId } : d)));
   const discardDraft = (draftId) => setDrafts((ds) => ds.filter((d) => d.draft_id !== draftId));
@@ -93,7 +114,7 @@ export function CaptureTab({ gardenId, plantings, containers, events, addEvent, 
                 <span className="sg-pill muted">{d.category}</span>
                 <button className="sg-icon-btn" onClick={() => discardDraft(d.draft_id)}><X size={14} /></button>
               </div>
-              <div className="sg-draft-payload">{JSON.stringify(d.payload)}</div>
+              <div className="sg-draft-summary">{summarizeDraft(d)}</div>
               {d.note && <div className="sg-draft-note">"{d.note}"</div>}
               <div className="sg-draft-row">
                 {d.media?.length ? (
