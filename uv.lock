@@ -249,7 +249,7 @@ wheels = [
 ]
 
 [[package]]
-name = "homegnome"
+name = "myGnomie"
 version = "0.1.0"
 source = { virtual = "." }
 dependencies = [

@@ -153,7 +153,7 @@ eval-type-backport==0.4.0 \
 fastapi==0.115.6 \
     --hash=sha256:9ec46f7addc14ea472958a96aae5b5de65f39721a46aaf5705c480d9a8b76654 \
     --hash=sha256:e9240b29e36fa8f4bb7290316988e90c381e5092e0cbe84e7818cc3713bcf305
-    # via homegnome
+    # via myGnomie
 h11==0.16.0 \
     --hash=sha256:4e35b956cf45792e4caa5885e69fba00bdbc6ffafbfa020300e549b208ee5ff1 \
     --hash=sha256:63cf8bbe7522de3bf65932fda1d9c2772064ffb3dae62d55932da54b31cb6c86
@@ -176,7 +176,7 @@ httpx==0.28.1 \
     --hash=sha256:75e98c5f16b0f35b567856f597f06ff2270a374470a5c2392242528e3e3e42fc \
     --hash=sha256:d909fcccc110f8c7faf814ca82a9a4d816bc5a6dbfea25d6591d6985b8ba59ad
     # via
-    #   homegnome
+    #   myGnomie
     #   mistralai
     #   postgrest
     #   storage3
@@ -201,7 +201,7 @@ jsonpath-python==1.1.6 \
 mistralai==2.9.4 \
     --hash=sha256:184f8ba3cffee6ffc379481340a67c1d5f6db145cf690b2ffd06d6a4cec92d2d \
     --hash=sha256:e3607552d34cc38b6f81e80bf95201946eac119260259b0cc1094aac350dbb8e
-    # via homegnome
+    # via myGnomie
 multidict==6.7.1 \
     --hash=sha256:03ede2a6ffbe8ef936b92cb4529f27f42be7f56afcdab5ab739cd5f27fb1cbf9 \
     --hash=sha256:0458c978acd8e6ea53c81eefaddbbee9c6c5e591f41b3f5e8e194780fe026581 \
@@ -412,7 +412,7 @@ pydantic==2.11.7 \
     --hash=sha256:dde5df002701f6de26248661f6835bbe296a47bf73990135c7d07ce741b9623b
     # via
     #   fastapi
-    #   homegnome
+    #   myGnomie
     #   mistralai
     #   postgrest
     #   realtime
@@ -463,7 +463,7 @@ python-dateutil==2.9.0.post0 \
 python-dotenv==1.0.1 \
     --hash=sha256:e324ee90a023d808f1959c46bcbc04446a10ced277783dc6ee09987c37ec10ca \
     --hash=sha256:f7b63ef50f1b690dddf550d03497b66d609393b40b564ed0d674909a68ebf16a
-    # via homegnome
+    # via myGnomie
 realtime==2.31.0 \
     --hash=sha256:9e641cb4d77ca0fe768515f8cf9f83550c79f49ce1550a95afc2dc0e252be8c9 \
     --hash=sha256:f6e494b53d6a6e80b6efcee6711c8dd40413a52e766271de1bce8ced6c36cc1d
@@ -487,7 +487,7 @@ strenum==0.4.15 \
 supabase==2.31.0 \
     --hash=sha256:25f2a99207a75f2d9377e2332783b4389cf56b02cbebdaf0c1743112dcbb704e \
     --hash=sha256:3467b09d00482b9a0138235bdbde7a350426f93cf2a1342372eaddfc669f1206
-    # via homegnome
+    # via myGnomie
 supabase-auth==2.31.0 \
     --hash=sha256:0945b33fa96239c76dc8eaf96d7d2c94991950d24b4cfe4a5c2da9aa5e909663 \
     --hash=sha256:5e9c8b4ecdee6af04dbcb06455ce78cb15674806fcb6b425170455307d70b0ee
@@ -517,7 +517,7 @@ typing-inspection==0.4.4 \
 uvicorn==0.29.0 \
     --hash=sha256:2c2aac7ff4f4365c206fd773a39bf4ebd1047c238f8b8268ad996829323473de \
     --hash=sha256:6a69214c0b6a087462412670b3ef21224fa48cae0e452b5883e8e8bdfdd11dd0
-    # via homegnome
+    # via myGnomie
 websockets==15.0.1 \
     --hash=sha256:0701bc3cfcb9164d04a14b149fd74be7347a530ad3bbf15ab2c678a2cd3dd9a2 \
     --hash=sha256:0af68c55afbd5f07986df82831c7bff04846928ea8d1fd7f30052638788bc9b5 \

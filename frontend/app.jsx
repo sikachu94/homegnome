@@ -4,7 +4,7 @@ import {
   Droplets, Scissors, Bug, Sparkles, MapPin, CloudRain, Snowflake, Thermometer,
   Camera, Box, Layers, ImagePlus, Apple, Leaf, Carrot, Flower2, Wheat,
 } from "lucide-react";
-import { apiChat, apiExtract, apiGardens } from "./api.js";
+import { apiChat, apiExtract, apiGardens, apiCreatePlanting, apiCreateEvent, apiUpdateGarden } from "./api.js";
 import gnomeLogo from "./assets/gnome_only.jpg";
 
 // ---------------------------------------------------------------------------
@@ -160,33 +160,6 @@ function GenericPlantImage({ harvestType, size = 28 }) {
   return <Icon size={size} />;
 }
 
-// ---------------------------------------------------------------------------
-// Local persistence (temporary)
-// ---------------------------------------------------------------------------
-// There's no backend endpoint yet to save gardens/plantings/containers/events
-// — api/index.py only wires up /api/chat and /api/extract. Until real CRUD
-// endpoints exist, plant-tracking data lives in this browser's localStorage
-// only (won't sync across devices or survive a cleared cache). Chat and note
-// extraction, below, go through the real backend instead.
-const LOCAL_PREFIX = "homegnome:";
-async function storageGet(key) {
-  try {
-    const raw = window.localStorage.getItem(LOCAL_PREFIX + key);
-    return raw === null ? null : { key, value: raw };
-  } catch {
-    return null;
-  }
-}
-async function storageSet(key, value) {
-  try {
-    window.localStorage.setItem(LOCAL_PREFIX + key, value);
-    return { key, value };
-  } catch (err) {
-    console.error("Local storage save failed", err);
-    return null;
-  }
-}
-
 const blankSoilRow = () => ({ id: uid("soil"), component: "", percent: 0 });
 const blankNewPlanting = () => ({
   nickname: "", species: "Tomato", entry_stage: "seedling", acquisition_source: "purchased_seedling",
@@ -201,6 +174,7 @@ export default function App() {
   const [containers, setContainers] = useState(null);
   const [events, setEvents] = useState(null);
   const [loaded, setLoaded] = useState(false);
+  const [loadError, setLoadError] = useState(null);
 
   // capture tab state
   const [note, setNote] = useState("");
@@ -213,6 +187,7 @@ export default function App() {
   // add-planting form state
   const [showAddForm, setShowAddForm] = useState(false);
   const [newPlanting, setNewPlanting] = useState(blankNewPlanting());
+  const [plantingError, setPlantingError] = useState(null);
 
   // garden state (identity + location/weather)
   const [garden, setGarden] = useState(null);
@@ -238,7 +213,8 @@ export default function App() {
         const response = await apiGardens();
         remoteGardens = response.gardens || [];
       } catch (err) {
-        console.warn("Could not load gardens from the API; using local demo data.", err);
+        console.error("Could not load gardens from the API", err);
+        setLoadError("Couldn't load your gardens. Check your connection and try again.");
       }
       if (remoteGardens.length) {
         const initial = remoteGardens.find((item) => item.id === GARDEN_ID) || remoteGardens[0];
@@ -249,17 +225,10 @@ export default function App() {
         e = initial.events || [];
         g = initial;
       } else {
-        try { const r = await storageGet("plantings"); p = r ? JSON.parse(r.value) : SEED_PLANTINGS; } catch { p = SEED_PLANTINGS; }
-        try { const r = await storageGet("containers"); c = r ? JSON.parse(r.value) : SEED_CONTAINERS; } catch { c = SEED_CONTAINERS; }
-        try { const r = await storageGet("events"); e = r ? JSON.parse(r.value) : SEED_EVENTS; } catch { e = SEED_EVENTS; }
-        try {
-          const r = await storageGet("garden");
-          g = r ? JSON.parse(r.value) : null;
-        } catch { g = null; }
-        if (!g) {
-          g = { ...DEFAULT_GARDEN, established_at: new Date().toISOString() };
-          try { await storageSet("garden", JSON.stringify(g)); } catch (err) { console.error(err); }
-        }
+        p = [];
+        c = [];
+        e = [];
+        g = null;
       }
       setPlantings(p); setContainers(c); setEvents(e); setGarden(g);
       setLoaded(true);
@@ -292,17 +261,29 @@ export default function App() {
     setWeather(null);
   };
 
-  const persist = useCallback(async (nextPlantings, nextEvents, nextContainers) => {
-    try {
-      if (nextPlantings) await storageSet("plantings", JSON.stringify(nextPlantings));
-      if (nextEvents) await storageSet("events", JSON.stringify(nextEvents));
-      if (nextContainers) await storageSet("containers", JSON.stringify(nextContainers));
-    } catch (err) { console.error("Storage save failed", err); }
-  }, []);
-
   const persistGarden = useCallback(async (g) => {
-    try { await storageSet("garden", JSON.stringify(g)); } catch (err) { console.error(err); }
-  }, []);
+    if (!gardenRecords.some((record) => record.id === g?.id)) return;
+    const { garden: updated } = await apiUpdateGarden(g.id, {
+      name: g.name, type: g.type, location: g.location, notes: g.notes,
+    });
+    const localUpdated = { ...updated, label: g.label };
+    setGarden(localUpdated);
+    setGardenRecords((records) => records.map((record) => record.id === updated.id ? { ...record, ...localUpdated } : record));
+  }, [gardenRecords]);
+
+  const refreshRemoteGardens = async (focusId = selectedGardenId) => {
+    const response = await apiGardens();
+    const records = response.gardens || [];
+    setGardenRecords(records);
+    const record = records.find((item) => item.id === focusId);
+    if (record) {
+      setGarden(record);
+      setPlantings(record.plantings || []);
+      setContainers(record.containers || []);
+      setEvents(record.events || []);
+    }
+    return record;
+  };
 
   useEffect(() => { chatEndRef.current?.scrollIntoView({ behavior: "smooth" }); }, [chatMessages]);
 
@@ -332,7 +313,15 @@ export default function App() {
         if (!alreadyFrost && typeof minTemp === "number" && minTemp < 0) {
           auto.push({ id: uid("evt"), timestamp: new Date().toISOString(), garden_id: activeGardenId, entity_type: "garden", entity_id: activeGardenId, category: "observation", source: "external", event_type: "frost", payload: { severity: minTemp < -3 ? "hard" : "light" }, confidence: "observed" });
         }
-        if (auto.length) setEvents((prev) => { const next = [...prev, ...auto]; persist(null, next); return next; });
+        if (auto.length) {
+          try {
+            await Promise.all(auto.map((event) => apiCreateEvent(activeGardenId, event)));
+            if (!cancelled) await refreshRemoteGardens(activeGardenId);
+            else return;
+          } catch (err) {
+            console.error("Weather event save failed", err);
+          }
+        }
       } catch (err) {
         if (!cancelled) setWeatherError("Couldn't fetch weather right now.");
       }
@@ -416,14 +405,15 @@ export default function App() {
   };
   const saveDraft = async (draft) => {
     if (scopeOf(draft.event_type) === "planting" && !draft.planting_id) return;
-    const next = [...events, buildEvent(draft)];
-    setEvents(next); await persist(null, next); discardDraft(draft.draft_id);
+    await apiCreateEvent(activeGardenId, buildEvent(draft));
+    await refreshRemoteGardens(activeGardenId);
+    discardDraft(draft.draft_id);
   };
   const saveAllDrafts = async () => {
     const ready = drafts.filter((d) => scopeOf(d.event_type) === "garden" || d.planting_id);
     if (!ready.length) return;
-    const next = [...events, ...ready.map(buildEvent)];
-    setEvents(next); await persist(null, next);
+    await Promise.all(ready.map((draft) => apiCreateEvent(activeGardenId, buildEvent(draft))));
+    await refreshRemoteGardens(activeGardenId);
     setDrafts((ds) => ds.filter((d) => scopeOf(d.event_type) !== "garden" && !d.planting_id));
     setNote("");
   };
@@ -441,6 +431,7 @@ export default function App() {
 
   const addPlanting = async () => {
     if (!newPlanting.nickname.trim()) return;
+    setPlantingError(null);
     const now = new Date().toISOString();
     const container = {
       id: uid("container"), garden_id: activeGardenId, name: `${newPlanting.nickname.trim()} container`,
@@ -465,13 +456,19 @@ export default function App() {
       media: newPlanting.photo ? [newPlanting.photo] : undefined,
       confidence: "observed",
     };
-    const nextPlantings = [...plantings, planting];
-    const nextContainers = [...containers, container];
-    const nextEvents = [...events, containerSetupEvent, plantingSetupEvent];
-    setPlantings(nextPlantings); setContainers(nextContainers); setEvents(nextEvents);
-    await persist(nextPlantings, nextEvents, nextContainers);
-    setNewPlanting(blankNewPlanting());
-    setShowAddForm(false);
+    try {
+      await apiCreatePlanting(activeGardenId, {
+        container,
+        planting,
+        events: [containerSetupEvent, plantingSetupEvent],
+      });
+      await refreshRemoteGardens(activeGardenId);
+      setNewPlanting(blankNewPlanting());
+      setShowAddForm(false);
+    } catch (err) {
+      console.error("Planting save failed", err);
+      setPlantingError("Couldn't save this planting. Check your connection and try again.");
+    }
   };
 
   const addPlantingPhoto = async (plantingId, file) => {
@@ -479,8 +476,8 @@ export default function App() {
     try {
       const dataUrl = await fileToDataUrl(file);
       const event = { id: uid("evt"), timestamp: new Date().toISOString(), garden_id: activeGardenId, entity_type: "planting", entity_id: plantingId, category: "observation", source: "self", event_type: "photo_log", payload: {}, media: [dataUrl], confidence: "observed" };
-      const next = [...events, event];
-      setEvents(next); await persist(null, next);
+      await apiCreateEvent(activeGardenId, event);
+      await refreshRemoteGardens(activeGardenId);
     } catch (err) { console.error(err); }
   };
 
@@ -535,20 +532,19 @@ ${weatherSummary}`;
   };
 
   const resetDemo = async () => {
-    const freshGarden = { ...DEFAULT_GARDEN, established_at: new Date().toISOString() };
-    setPlantings(SEED_PLANTINGS); setContainers(SEED_CONTAINERS); setEvents(SEED_EVENTS);
-    setDrafts([]); setChatMessages([]); setGarden(freshGarden); setWeather(null);
-    await persist(SEED_PLANTINGS, SEED_EVENTS, SEED_CONTAINERS);
-    await persistGarden(freshGarden);
+    if (!gardenRecords.length) return;
+    await refreshRemoteGardens(selectedGardenId);
+    setDrafts([]); setChatMessages([]);
   };
 
   if (!loaded) return <div className="sg-root sg-loading"><Loader2 className="spin" size={22} /><span>Loading your garden…</span><Styles /></div>;
+  if (loadError) return <div className="sg-root sg-loading"><span>{loadError}</span><Styles /></div>;
 
   return (
     <div className="sg-root">
       <Styles />
       <header className="sg-header">
-        <div className="sg-brand"><img src={gnomeLogo} alt="homeGnome logo" /><span>homeGnome</span></div>
+        <div className="sg-brand"><img src={gnomeLogo} alt="myGnomie logo" /><span>myGnomie</span></div>
         <button className="sg-reset" onClick={resetDemo} title="Reset demo data"><RotateCcw size={14} /> Reset demo</button>
       </header>
 
@@ -575,14 +571,14 @@ ${weatherSummary}`;
       <nav className="sg-tabs">
         <button className={tab === "capture" ? "active" : ""} onClick={() => setTab("capture")}><NotebookPen size={16} /> Log</button>
         <button className={tab === "plants" ? "active" : ""} onClick={() => setTab("plants")}><Sprout size={16} /> My garden</button>
-        <button className={tab === "chat" ? "active" : ""} onClick={() => setTab("chat")}><MessageCircle size={16} /> Ask homeGnome</button>
+        <button className={tab === "chat" ? "active" : ""} onClick={() => setTab("chat")}><MessageCircle size={16} /> Ask myGnomie</button>
       </nav>
 
       <main className="sg-main">
         {tab === "capture" && (
           <section className="sg-panel">
             <h1>What's happening in the garden?</h1>
-            <p className="sg-sub">Tell homeGnome about an even in your garden, he will keep track of it for you.</p>
+            <p className="sg-sub">Tell myGnomie about an even in your garden, he will keep track of it for you.</p>
             <div className="sg-capture-box">
               <textarea value={note} onChange={(e) => setNote(e.target.value)} placeholder="e.g. Watered the balcony tomato, and I think the basil has some aphids on the underside of the leaves" rows={4} />
               <div className="sg-capture-actions">
@@ -715,6 +711,7 @@ ${weatherSummary}`;
                     <label className="sg-photo-add wide"><ImagePlus size={13} /> Add a photo (optional)<input type="file" accept="image/*" hidden onChange={(e) => handleNewPlantingPhoto(e.target.files?.[0])} /></label>
                   )}
                 </div>
+                {plantingError && <div className="sg-error">{plantingError}</div>}
                 <button className="sg-primary sm" onClick={addPlanting}>Create planting</button>
               </div>
             )}
@@ -762,7 +759,7 @@ ${weatherSummary}`;
 
         {tab === "chat" && (
           <section className="sg-panel sg-chat-panel">
-            <h1>Ask homeGnome</h1>
+            <h1>Ask myGnomie</h1>
             <p className="sg-sub">He can help you manage your garden!</p>
             <div className="sg-chat-thread">
               {chatMessages.length === 0 && <div className="sg-chat-empty">Try: "Is my tomato's soil okay?" or "Should I water today given the weather?"</div>}
