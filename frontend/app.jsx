@@ -88,7 +88,7 @@ export default function App() {
           the original single-file behavior where this state lived in App. */}
       <main className="sg-main">
         <div hidden={tab !== "capture"}>
-          <CaptureTab plantings={plantings} events={events} addEvent={addEvent} resetSignal={resetKey} />
+          <CaptureTab plantings={plantings} containers={containers} events={events} addEvent={addEvent} resetSignal={resetKey} />
         </div>
         <div hidden={tab !== "plants"}>
           <PlantsTab

@@ -88,14 +88,18 @@ export function useGardenData() {
   const addPlanting = useCallback(async (form) => {
     if (!form.nickname.trim()) return;
     const now = new Date().toISOString();
-    const container = {
-      id: uid("container"), garden_id: GARDEN_ID, name: `${form.nickname.trim()} container`,
-      type: form.containerType, mobility: "movable", material: form.material,
-      volume_l: form.containerSize ? Number(form.containerSize) : undefined,
-      created_at: now,
-    };
+    const existingContainerId = form.containerMode === "existing" ? form.containerId : null;
+    const container = existingContainerId
+      ? null
+      : {
+          id: uid("container"), garden_id: GARDEN_ID, name: `${form.material} ${form.containerType} container`,
+          type: form.containerType, mobility: "movable", material: form.material,
+          volume_l: form.containerSize ? Number(form.containerSize) : undefined,
+          created_at: now,
+        };
+    const containerIdForEvents = existingContainerId || container?.id;
     const containerSetupEvent = {
-      id: uid("evt"), timestamp: now, garden_id: GARDEN_ID, entity_type: "container", entity_id: container.id,
+      id: uid("evt"), timestamp: now, garden_id: GARDEN_ID, entity_type: "container", entity_id: containerIdForEvents,
       category: "lifecycle", source: "self", event_type: "container_setup",
       payload: {
         initial_placement: form.placement.trim() || "Unspecified",
@@ -107,14 +111,15 @@ export function useGardenData() {
     const plantingSetupEvent = {
       id: uid("evt"), timestamp: now, garden_id: GARDEN_ID, entity_type: "planting", entity_id: planting.id,
       category: "lifecycle", source: "self", event_type: "planting_setup",
-      payload: { container_id: container.id, entry_stage: form.entry_stage, acquisition_source: form.acquisition_source },
+      payload: { container_id: containerIdForEvents, entry_stage: form.entry_stage, acquisition_source: form.acquisition_source },
       media: form.photo ? [form.photo] : undefined,
       confidence: "observed",
     };
+    const eventsToPersist = existingContainerId ? [plantingSetupEvent] : [containerSetupEvent, plantingSetupEvent];
     const response = await apiCreatePlanting(GARDEN_ID, {
-      container,
+      ...(existingContainerId ? { container_id: existingContainerId } : { container }),
       planting: { ...planting, garden_id: GARDEN_ID },
-      events: [containerSetupEvent, plantingSetupEvent],
+      events: eventsToPersist,
     });
     const aggregate = await apiGardens();
     const remoteGarden = aggregate.gardens?.find((item) => item.id === GARDEN_ID);
