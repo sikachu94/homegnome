@@ -5,7 +5,7 @@ import {
   Camera, Box, Layers, ImagePlus, Apple, Leaf, Carrot, Flower2, Wheat,
 } from "lucide-react";
 import { apiChat, apiExtract } from "./api.js";
-import gnomeLogo from "../docs/gnome_only.jpg";
+import gnomeLogo from "./assets/gnome_only.jpg";
 
 // ---------------------------------------------------------------------------
 // Static reference data
