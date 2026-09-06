@@ -58,7 +58,7 @@ export function PlantsTab({ garden, plantings, containers, events, addPlanting, 
           value={garden?.notes || ""} onChange={(e) => updateGardenLocal({ notes: e.target.value })} onBlur={() => persistGarden(garden)} />
       </div>
 
-      <div className="sg-drafts-head" style={{ marginTop: "26px" }}><h2>Plants</h2><button className="sg-primary sm" onClick={() => setShowAddForm((s) => !s)}><Plus size={14} /> Add planting</button></div>
+      <div className="sg-drafts-head" style={{ marginTop: "26px" }}><h2>Plants</h2><button className="sg-primary sm" onClick={() => setShowAddForm((s) => !s)}><Plus size={14} /> Add plant</button></div>
 
       {showAddForm && (
         <div className="sg-draft-card">

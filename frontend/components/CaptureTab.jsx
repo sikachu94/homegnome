@@ -73,7 +73,7 @@ export function CaptureTab({ gardenId, plantings, containers, events, addEvent, 
   return (
     <section className="sg-panel">
       <h1>What's happening in the garden?</h1>
-      <p className="sg-sub">Tell myGnomie about an even in your garden, he will keep track of it for you.</p>
+      <p className="sg-sub">Keep track of your plants</p>
       <div className="sg-capture-box">
         <textarea value={note} onChange={(e) => setNote(e.target.value)} placeholder="e.g. Watered the balcony tomato, and I think the basil has some aphids on the underside of the leaves" rows={4} />
         <div className="sg-capture-actions">
@@ -117,7 +117,7 @@ export function CaptureTab({ gardenId, plantings, containers, events, addEvent, 
       )}
 
       <div className="sg-recent">
-        <h2>Recent log</h2>
+        <h2>Events</h2>
         {[...events].sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp)).slice(0, 8).map((e) => (
           <div key={e.id} className="sg-event-row">
             <EventIcon type={e.event_type} />
