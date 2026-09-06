@@ -1,9 +1,13 @@
 import os
+import logging
+from types import SimpleNamespace
 
+import httpx
 from dotenv import load_dotenv
 from fastapi import Header, HTTPException
-from mistralai.client import Mistral
 from supabase import Client, create_client
+
+logger = logging.getLogger(__name__)
 
 # Vercel sets VERCEL=1 in its runtime; only load a local .env file outside of it.
 if not os.environ.get("VERCEL"):
@@ -23,14 +27,52 @@ def _require_env(name: str) -> str:
 
 SUPABASE_URL = _require_env("SUPABASE_URL")
 SUPABASE_ANON_KEY = _require_env("SUPABASE_ANON_KEY")
-MISTRAL_API_KEY = _require_env("MISTRAL_API_KEY")
+OPENROUTER_API_KEY = _require_env("OPENROUTER_API_KEY")
 
 # Overridable per-environment without a code change.
-CHAT_MODEL = os.environ.get("MISTRAL_CHAT_MODEL", "mistral-medium-latest")
-EXTRACT_MODEL = os.environ.get("MISTRAL_EXTRACT_MODEL", "ministral-8b-latest")
+CHAT_MODEL = os.environ.get("OPENROUTER_CHAT_MODEL", "minimax/minimax-m2.7:free")
+EXTRACT_MODEL = os.environ.get("OPENROUTER_EXTRACT_MODEL", CHAT_MODEL)
 
 _auth_client: Client = create_client(SUPABASE_URL, SUPABASE_ANON_KEY)
-mistral_client = Mistral(api_key=MISTRAL_API_KEY)
+
+
+class OpenRouterClient:
+    def __init__(self, api_key: str):
+        self.api_key = api_key
+        self.chat = self
+
+    def complete(self, *, model: str, messages: list[dict], response_format: dict | None = None):
+        payload = {"model": model, "messages": messages}
+        if response_format is not None:
+            payload["response_format"] = response_format
+        response = httpx.post(
+            "https://openrouter.ai/api/v1/chat/completions",
+            headers={
+                "Authorization": f"Bearer {self.api_key}",
+                "Content-Type": "application/json",
+                "HTTP-Referer": os.environ.get("OPENROUTER_SITE_URL", "http://localhost:5173"),
+                "X-Title": os.environ.get("OPENROUTER_APP_NAME", "myGnomie"),
+            },
+            json=payload,
+            timeout=60.0,
+        )
+        if response.status_code >= 400:
+            try:
+                provider_error = response.json().get("error", {}).get("message", response.text)
+            except ValueError:
+                provider_error = response.text
+            raise RuntimeError(f"OpenRouter returned HTTP {response.status_code}: {provider_error[:300]}")
+        data = response.json()
+        if not data.get("choices"):
+            raise RuntimeError("OpenRouter returned no choices")
+        choices = [
+            SimpleNamespace(message=SimpleNamespace(content=choice.get("message", {}).get("content")))
+            for choice in data.get("choices", [])
+        ]
+        return SimpleNamespace(choices=choices)
+
+
+openrouter_client = OpenRouterClient(OPENROUTER_API_KEY)
 
 
 def _bearer_token(authorization: str) -> str:

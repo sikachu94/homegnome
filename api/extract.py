@@ -1,12 +1,14 @@
 import json
+import logging
 from typing import Any, Dict, List, Optional
 
 from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel, Field, ValidationError
 
-from .deps import EXTRACT_MODEL, get_current_user, get_db, mistral_client, verify_garden_ownership
+from .deps import EXTRACT_MODEL, get_current_user, get_db, openrouter_client, verify_garden_ownership
 
 router = APIRouter()
+logger = logging.getLogger(__name__)
 
 
 class EventDraft(BaseModel):
@@ -66,9 +68,9 @@ Never propose photo_log from text alone — photos are attached by the user dire
 If the note describes more than one distinct thing, include multiple items in "drafts".
 If nothing matches a known planting or event type, return {{"drafts": []}}."""
 
-    # 2. Call Mistral in JSON mode
+    # 2. Call OpenRouter in JSON mode
     try:
-        response = mistral_client.chat.complete(
+        response = openrouter_client.chat.complete(
             model=EXTRACT_MODEL,
             messages=[
                 {"role": "system", "content": system_instruction},
@@ -76,10 +78,14 @@ If nothing matches a known planting or event type, return {{"drafts": []}}."""
             ],
             response_format={"type": "json_object"},
         )
-    except Exception:
+    except Exception as exc:
+        logger.exception("OpenRouter extraction request failed: %s", exc)
         raise HTTPException(status_code=502, detail="Extraction provider is unavailable")
 
     raw = response.choices[0].message.content
+    if not raw:
+        logger.error("OpenRouter extraction response had empty content")
+        raise HTTPException(status_code=502, detail="Extraction provider returned an empty response")
 
     # 3. Validate the model's output against our schema. Also tolerates a
     # bare JSON array in case the model ignores the "wrap in drafts" instruction.
@@ -88,7 +94,8 @@ If nothing matches a known planting or event type, return {{"drafts": []}}."""
     except ValidationError:
         try:
             parsed = EventDraftList.model_validate({"drafts": json.loads(raw)})
-        except Exception:
+        except Exception as exc:
+            logger.exception("OpenRouter extraction response was invalid: %s", exc)
             raise HTTPException(status_code=502, detail="Model returned a response that didn't match the expected schema.")
 
     return {"drafts": [d.model_dump() for d in parsed.drafts]}

@@ -14,10 +14,10 @@ export default function App() {
   const [resetKey, setResetKey] = useState(0);
 
   const {
-    loaded, loadError, plantings, containers, events, garden,
+    loaded, loadError, plantings, containers, events, garden, gardenId,
     addEvent, addPlanting, addPlantingPhoto,
     updateGardenLocal, updateGardenAndPersist, persistGarden,
-    resetDemo: resetGardenData,
+    resetDemo: resetGardenData, refresh: refreshGardenData,
   } = useGardenData();
 
   const {
@@ -88,7 +88,7 @@ export default function App() {
           the original single-file behavior where this state lived in App. */}
       <main className="sg-main">
         <div hidden={tab !== "capture"}>
-          <CaptureTab plantings={plantings} containers={containers} events={events} addEvent={addEvent} resetSignal={resetKey} />
+          <CaptureTab gardenId={gardenId} plantings={plantings} containers={containers} events={events} addEvent={addEvent} resetSignal={resetKey} />
         </div>
         <div hidden={tab !== "plants"}>
           <PlantsTab
@@ -98,7 +98,7 @@ export default function App() {
           />
         </div>
         <div hidden={tab !== "chat"}>
-          <ChatTab plantings={plantings} containers={containers} events={events} garden={garden} weather={weather} resetSignal={resetKey} />
+          <ChatTab gardenId={gardenId} plantings={plantings} containers={containers} events={events} garden={garden} weather={weather} onGardenChanged={refreshGardenData} resetSignal={resetKey} />
         </div>
       </main>
     </div>

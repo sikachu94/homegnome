@@ -11,7 +11,6 @@ dependencies = [
     "fastapi==0.115.6",
     "pydantic==2.11.7",
     "supabase==2.31.0",
-    "mistralai==2.9.4",
     "python-dotenv==1.0.1",
     "uvicorn==0.29.0",
     "httpx==0.28.1",

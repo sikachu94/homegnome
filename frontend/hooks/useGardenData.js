@@ -15,6 +15,7 @@ export function useGardenData() {
   const [containers, setContainers] = useState(null);
   const [events, setEvents] = useState(null);
   const [garden, setGarden] = useState(null);
+  const [gardenId, setGardenId] = useState(GARDEN_ID);
   const [loaded, setLoaded] = useState(false);
   const [loadError, setLoadError] = useState(null);
 
@@ -32,6 +33,7 @@ export function useGardenData() {
 
   const applyGarden = useCallback(async (data) => {
     const nextGarden = { ...data, label: data.label || data.name };
+    setGardenId(nextGarden.id || GARDEN_ID);
     setGarden(nextGarden);
     setPlantings(data.plantings || []);
     setContainers(data.containers || []);
@@ -44,7 +46,7 @@ export function useGardenData() {
     (async () => {
       try {
         const response = await apiGardens();
-        const remoteGarden = response.gardens?.find((item) => item.id === GARDEN_ID);
+        const remoteGarden = response.gardens?.find((item) => item.id === GARDEN_ID) || response.gardens?.[0];
         if (!remoteGarden) throw new Error(`Configured garden ${GARDEN_ID} was not returned by the API`);
         await applyGarden(remoteGarden);
         setLoadError(null);
@@ -61,6 +63,13 @@ export function useGardenData() {
     })();
   }, [applyGarden]);
 
+  const refresh = useCallback(async () => {
+    const response = await apiGardens();
+    const remoteGarden = response.gardens?.find((item) => item.id === gardenId);
+    if (!remoteGarden) throw new Error(`Garden ${gardenId} was not returned by the API`);
+    await applyGarden(remoteGarden);
+  }, [applyGarden, gardenId]);
+
   const updateGardenLocal = useCallback((patch) => {
     setGarden((g) => ({ ...(g || DEFAULT_GARDEN), ...patch }));
   }, []);
@@ -68,22 +77,22 @@ export function useGardenData() {
   const updateGardenAndPersist = useCallback((patch) => {
     setGarden((g) => {
       const next = { ...(g || DEFAULT_GARDEN), ...patch };
-      apiUpdateGarden(GARDEN_ID, patch)
+      apiUpdateGarden(gardenId, patch)
         .then(({ garden: saved }) => persistGarden({ ...saved, label: saved.label || saved.name }))
         .catch((err) => console.error("Garden update failed", err));
       return next;
     });
-  }, [persistGarden]);
+  }, [gardenId, persistGarden]);
 
   /** Appends one event or an array of events, then persists. */
   const addEvent = useCallback(async (eventOrEvents) => {
     const toAdd = Array.isArray(eventOrEvents) ? eventOrEvents : [eventOrEvents];
-    const created = await Promise.all(toAdd.map((event) => apiCreateEvent(GARDEN_ID, event)));
+    const created = await Promise.all(toAdd.map((event) => apiCreateEvent(gardenId, event)));
     const response = await apiGardens();
-    const remoteGarden = response.gardens?.find((item) => item.id === GARDEN_ID);
+    const remoteGarden = response.gardens?.find((item) => item.id === gardenId);
     if (remoteGarden) await applyGarden(remoteGarden);
     else setEvents((prev) => [...prev, ...created.map(({ event }) => event)]);
-  }, [applyGarden]);
+  }, [applyGarden, gardenId]);
 
   const addPlanting = useCallback(async (form) => {
     if (!form.nickname.trim()) return;
@@ -92,14 +101,14 @@ export function useGardenData() {
     const container = existingContainerId
       ? null
       : {
-          id: uid("container"), garden_id: GARDEN_ID, name: `${form.material} ${form.containerType} container`,
+          id: uid("container"), garden_id: gardenId, name: `${form.material} ${form.containerType} container`,
           type: form.containerType, mobility: "movable", material: form.material,
           volume_l: form.containerSize ? Number(form.containerSize) : undefined,
           created_at: now,
         };
     const containerIdForEvents = existingContainerId || container?.id;
     const containerSetupEvent = {
-      id: uid("evt"), timestamp: now, garden_id: GARDEN_ID, entity_type: "container", entity_id: containerIdForEvents,
+      id: uid("evt"), timestamp: now, garden_id: gardenId, entity_type: "container", entity_id: containerIdForEvents,
       category: "lifecycle", source: "self", event_type: "container_setup",
       payload: {
         initial_placement: form.placement.trim() || "Unspecified",
@@ -109,49 +118,50 @@ export function useGardenData() {
     };
     const planting = { id: uid("planting"), species: form.species, nickname: form.nickname.trim(), started_at: now };
     const plantingSetupEvent = {
-      id: uid("evt"), timestamp: now, garden_id: GARDEN_ID, entity_type: "planting", entity_id: planting.id,
+      id: uid("evt"), timestamp: now, garden_id: gardenId, entity_type: "planting", entity_id: planting.id,
       category: "lifecycle", source: "self", event_type: "planting_setup",
       payload: { container_id: containerIdForEvents, entry_stage: form.entry_stage, acquisition_source: form.acquisition_source },
       media: form.photo ? [form.photo] : undefined,
       confidence: "observed",
     };
     const eventsToPersist = existingContainerId ? [plantingSetupEvent] : [containerSetupEvent, plantingSetupEvent];
-    const response = await apiCreatePlanting(GARDEN_ID, {
+    const response = await apiCreatePlanting(gardenId, {
       ...(existingContainerId ? { container_id: existingContainerId } : { container }),
-      planting: { ...planting, garden_id: GARDEN_ID },
+      planting: { ...planting, garden_id: gardenId },
       events: eventsToPersist,
     });
     const aggregate = await apiGardens();
-    const remoteGarden = aggregate.gardens?.find((item) => item.id === GARDEN_ID);
+    const remoteGarden = aggregate.gardens?.find((item) => item.id === gardenId);
     if (remoteGarden) await applyGarden(remoteGarden);
     else {
       setPlantings((prev) => [...prev, response.planting]);
       setContainers((prev) => [...prev, response.container]);
       setEvents((prev) => [...prev, ...response.events]);
     }
-  }, [applyGarden]);
+  }, [applyGarden, gardenId]);
 
   const addPlantingPhoto = useCallback(async (plantingId, file) => {
     if (!file) return;
     try {
       const dataUrl = await fileToDataUrl(file);
-      const event = { id: uid("evt"), timestamp: new Date().toISOString(), garden_id: GARDEN_ID, entity_type: "planting", entity_id: plantingId, category: "observation", source: "self", event_type: "photo_log", payload: {}, media: [dataUrl], confidence: "observed" };
+      const event = { id: uid("evt"), timestamp: new Date().toISOString(), garden_id: gardenId, entity_type: "planting", entity_id: plantingId, category: "observation", source: "self", event_type: "photo_log", payload: {}, media: [dataUrl], confidence: "observed" };
       await addEvent(event);
     } catch (err) { console.error(err); }
-  }, [addEvent]);
+  }, [addEvent, gardenId]);
 
   const resetDemo = useCallback(async () => {
     const response = await apiGardens();
-    const remoteGarden = response.gardens?.find((item) => item.id === GARDEN_ID);
+    const remoteGarden = response.gardens?.find((item) => item.id === gardenId);
     if (!remoteGarden) throw new Error(`Configured garden ${GARDEN_ID} was not returned by the API`);
     await applyGarden(remoteGarden);
     setLoadError(null);
-  }, [applyGarden]);
+  }, [applyGarden, gardenId]);
 
   return {
-    loaded, loadError, plantings, containers, events, garden,
+    loaded, loadError, plantings, containers, events, garden, gardenId,
     addEvent, addPlanting, addPlantingPhoto,
     updateGardenLocal, updateGardenAndPersist, persistGarden,
     resetDemo,
+    refresh,
   };
 }

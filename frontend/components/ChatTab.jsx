@@ -1,12 +1,11 @@
 import { useState, useRef, useEffect } from "react";
 import { Loader2 } from "lucide-react";
 import { apiChat } from "../api.js";
-import { GARDEN_ID } from "../lib/seedData.js";
 import { SPECIES_META } from "../lib/species.js";
 import { projectPlanting, projectContainer } from "../lib/projections.js";
 import { fmtDateTime, formatComposition } from "../lib/format.js";
 
-export function ChatTab({ plantings, containers, events, garden, weather, resetSignal }) {
+export function ChatTab({ gardenId, plantings, containers, events, garden, weather, onGardenChanged, resetSignal }) {
   const [chatMessages, setChatMessages] = useState([]);
   const [chatInput, setChatInput] = useState("");
   const [chatting, setChatting] = useState(false);
@@ -57,8 +56,9 @@ CURRENT WEATHER
 ${weatherSummary}`;
 
       const apiMessages = nextMessages.map((m) => ({ role: m.role, content: m.text }));
-      const res = await apiChat(GARDEN_ID, apiMessages, context);
+      const res = await apiChat(gardenId, apiMessages, context);
       setChatMessages((ms) => [...ms, { role: "assistant", text: res.reply }]);
+      await onGardenChanged();
     } catch (err) {
       setChatMessages((ms) => [...ms, { role: "assistant", text: "Something went wrong reaching the assistant — try again in a moment." }]);
     } finally { setChatting(false); }

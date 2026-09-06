@@ -2,14 +2,61 @@ from fastapi.testclient import TestClient
 from pydantic import ValidationError
 
 from api.chat import ChatRequest
+from api.chat import _parse_chat_response
 from api import deps
+from api.deps import OpenRouterClient
 from api.extract import ExtractRequest
+from api import chat as chat_api
 from api import gardens as gardens_api
 from api import writes as writes_api
 from api.index import app
 
 
 client = TestClient(app)
+
+
+def test_chat_response_parser_accepts_fenced_json_and_plain_text():
+    fenced = _parse_chat_response('```json\n{"reply":"Hello","create_events":[],"edit_events":[]}\n```')
+    plain = _parse_chat_response("Hello! Your tomato looks like it could use water.")
+
+    assert fenced.reply == "Hello"
+    assert plain.reply == "Hello! Your tomato looks like it could use water."
+    assert plain.create_events == []
+    assert plain.edit_events == []
+
+
+def test_openrouter_client_sends_openai_compatible_request(monkeypatch):
+    captured = {}
+
+    class FakeResponse:
+        status_code = 200
+
+        def raise_for_status(self):
+            return None
+
+        def json(self):
+            return {"choices": [{"message": {"content": "{\"reply\":\"Hello\"}"}}]}
+
+    def fake_post(url, **kwargs):
+        captured["url"] = url
+        captured["kwargs"] = kwargs
+        return FakeResponse()
+
+    monkeypatch.setattr(deps.httpx, "post", fake_post)
+    response = OpenRouterClient("test-key").chat.complete(
+        model="openai/test-model",
+        messages=[{"role": "user", "content": "Hello"}],
+        response_format={"type": "json_object"},
+    )
+
+    assert captured["url"] == "https://openrouter.ai/api/v1/chat/completions"
+    assert captured["kwargs"]["headers"]["Authorization"] == "Bearer test-key"
+    assert captured["kwargs"]["json"] == {
+        "model": "openai/test-model",
+        "messages": [{"role": "user", "content": "Hello"}],
+        "response_format": {"type": "json_object"},
+    }
+    assert response.choices[0].message.content == '{"reply":"Hello"}'
 
 
 def test_health_endpoint_reports_ready():
@@ -37,6 +84,170 @@ def test_extract_request_rejects_oversized_notes():
         return
 
     raise AssertionError("oversized extraction notes must be rejected")
+
+
+def test_chat_updates_owned_event(monkeypatch):
+    class FakeQuery:
+        def __init__(self, table):
+            self.table = table
+            self.filters = {}
+            self.values = None
+
+        def select(self, _columns):
+            return self
+
+        def eq(self, column, value):
+            self.filters[column] = value
+            return self
+
+        def order(self, _column, desc=False):
+            return self
+
+        def limit(self, _value):
+            return self
+
+        def update(self, values):
+            self.values = values
+            return self
+
+        def execute(self):
+            if self.table == "gardens":
+                return type("Result", (), {"data": [{"id": "garden-1"}]})()
+            if self.table == "garden_events" and self.values is None:
+                return type(
+                    "Result",
+                    (),
+                    {"data": [{"id": "event-1", "garden_id": "garden-1", "entity_type": "garden", "entity_id": "garden-1"}]},
+                )()
+            if self.table == "garden_events" and self.values is not None:
+                assert self.filters == {"id": "event-1", "garden_id": "garden-1"}
+                return type("Result", (), {"data": [{"id": "event-1", **self.values}]})()
+            return type("Result", (), {"data": []})()
+
+    class FakeSupabase:
+        def table(self, table):
+            return FakeQuery(table)
+
+    class FakeOpenRouter:
+        class chat:
+            @staticmethod
+            def complete(**_kwargs):
+                return type(
+                    "Response",
+                    (),
+                    {
+                        "choices": [
+                            type(
+                                "Choice",
+                                (),
+                                {
+                                    "message": type(
+                                        "Message",
+                                        (),
+                                        {
+                                            "content": '{"reply":"Corrected it.","create_events":[],"edit_events":[{"event_id":"event-1","payload":{"amount_l":2},"note":"Actually used two liters"}]}'
+                                        },
+                                    )()
+                                },
+                            )()
+                        ]
+                    },
+                )()
+
+    monkeypatch.setattr(chat_api, "openrouter_client", FakeOpenRouter())
+    app.dependency_overrides[chat_api.get_current_user] = lambda: "user-1"
+    app.dependency_overrides[chat_api.get_db] = lambda: FakeSupabase()
+    try:
+        response = client.post(
+            "/api/chat",
+            json={"garden_id": "garden-1", "messages": [{"role": "user", "content": "Actually I used two liters"}]},
+        )
+    finally:
+        app.dependency_overrides.clear()
+
+    assert response.status_code == 200
+    assert response.json()["reply"] == "Corrected it."
+    assert response.json()["updated_events"] == [{"id": "event-1", "payload": {"amount_l": 2}, "note": "Actually used two liters"}]
+
+
+def test_chat_creates_event_for_owned_planting(monkeypatch):
+    inserted = []
+
+    class FakeQuery:
+        def __init__(self, table):
+            self.table = table
+            self.rows = []
+
+        def select(self, _columns):
+            return self
+
+        def eq(self, _column, _value):
+            return self
+
+        def order(self, _column, desc=False):
+            return self
+
+        def limit(self, _value):
+            return self
+
+        def insert(self, rows):
+            self.rows = rows
+            inserted.extend(rows)
+            return self
+
+        def execute(self):
+            if self.table == "gardens":
+                return type("Result", (), {"data": [{"id": "garden-1"}]})()
+            if self.table == "plantings":
+                return type("Result", (), {"data": [{"id": "planting-1"}]})()
+            if self.table == "garden_events" and self.rows:
+                return type("Result", (), {"data": [{**self.rows[0], "id": "event-2"}]})()
+            return type("Result", (), {"data": []})()
+
+    class FakeSupabase:
+        def table(self, table):
+            return FakeQuery(table)
+
+    class FakeOpenRouter:
+        class chat:
+            @staticmethod
+            def complete(**_kwargs):
+                return type(
+                    "Response",
+                    (),
+                    {
+                        "choices": [
+                            type(
+                                "Choice",
+                                (),
+                                {
+                                    "message": type(
+                                        "Message",
+                                        (),
+                                        {
+                                            "content": '{"reply":"Logged it.","create_events":[{"entity_type":"planting","entity_id":"planting-1","event_type":"watering","category":"action","payload":{"amount_l":1}}],"edit_events":[]}'
+                                        },
+                                    )()
+                                },
+                            )()
+                        ]
+                    },
+                )()
+
+    monkeypatch.setattr(chat_api, "openrouter_client", FakeOpenRouter())
+    app.dependency_overrides[chat_api.get_current_user] = lambda: "user-1"
+    app.dependency_overrides[chat_api.get_db] = lambda: FakeSupabase()
+    try:
+        response = client.post(
+            "/api/chat",
+            json={"garden_id": "garden-1", "messages": [{"role": "user", "content": "Watered my tomato"}]},
+        )
+    finally:
+        app.dependency_overrides.clear()
+
+    assert response.status_code == 200
+    assert response.json()["created_events"][0]["id"] == "event-2"
+    assert inserted[0]["garden_id"] == "garden-1"
 
 
 def test_gardens_endpoint_returns_owned_gardens_with_related_data(monkeypatch):

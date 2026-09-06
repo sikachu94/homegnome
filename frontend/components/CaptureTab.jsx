@@ -1,13 +1,12 @@
 import { useState, useRef, useEffect } from "react";
 import { Mic, Square, Sparkles, Loader2, X, Camera } from "lucide-react";
 import { apiExtract } from "../api.js";
-import { GARDEN_ID } from "../lib/seedData.js";
 import { scopeOf, buildEvent, labelForEntity } from "../lib/events.js";
 import { uid, fmtDateTime } from "../lib/format.js";
 import { fileToDataUrl } from "../lib/imageUtils.js";
 import { EventIcon } from "./EventIcon.jsx";
 
-export function CaptureTab({ plantings, containers, events, addEvent, resetSignal }) {
+export function CaptureTab({ gardenId, plantings, containers, events, addEvent, resetSignal }) {
   const [note, setNote] = useState("");
   const [listening, setListening] = useState(false);
   const [extracting, setExtracting] = useState(false);
@@ -40,7 +39,7 @@ export function CaptureTab({ plantings, containers, events, addEvent, resetSigna
       // from Supabase's `plantings` table, so drafts will only match
       // plantings that actually exist there — not the local demo/seed
       // plantings this app keeps in localStorage (see hooks/useGardenData.js).
-      const { drafts: rawDrafts } = await apiExtract(GARDEN_ID, note);
+      const { drafts: rawDrafts } = await apiExtract(gardenId, note);
       const withIds = (rawDrafts || []).map((d) => ({ ...d, draft_id: uid("draft"), media: [] }));
       setDrafts(withIds);
     } catch (err) {
@@ -59,14 +58,14 @@ export function CaptureTab({ plantings, containers, events, addEvent, resetSigna
 
   const saveDraft = async (draft) => {
     if (scopeOf(draft.event_type) === "planting" && !draft.planting_id) return;
-    await addEvent(buildEvent(draft, GARDEN_ID));
+    await addEvent(buildEvent(draft, gardenId));
     discardDraft(draft.draft_id);
   };
 
   const saveAllDrafts = async () => {
     const ready = drafts.filter((d) => scopeOf(d.event_type) === "garden" || d.planting_id);
     if (!ready.length) return;
-    await addEvent(ready.map((d) => buildEvent(d, GARDEN_ID)));
+    await addEvent(ready.map((d) => buildEvent(d, gardenId)));
     setDrafts((ds) => ds.filter((d) => scopeOf(d.event_type) !== "garden" && !d.planting_id));
     setNote("");
   };

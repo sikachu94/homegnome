@@ -6,7 +6,7 @@ entrypoints remain in `api/`.
 
 ### Docker
 
-Copy `.env.example` to `.env` and fill in the Supabase and Mistral values. Then start both services:
+Copy `.env.example` to `.env` and fill in the Supabase and OpenRouter values. Then start both services:
 
 ```bash
 docker compose up --build
