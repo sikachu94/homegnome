@@ -503,7 +503,7 @@ ${weatherSummary}`;
       <Styles />
       <header className="sg-header">
         <div className="sg-brand"><Sprout size={20} /><span>homeGnome</span></div>
-        <button className="sg-reset" onClick={ } title="Reset demo data"><RotateCcw size={14} /> Reset demo</button>
+        <button className="sg-reset" onClick={resetDemo} title="Reset demo data"><RotateCcw size={14} /> Reset demo</button>
       </header>
 
       {!garden?.location ? (
