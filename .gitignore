@@ -1,5 +1,7 @@
 .env
 .venv
+.claude
+.agents
 node_modules/
 dist/
 CLAUDE.md

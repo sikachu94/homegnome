@@ -42,9 +42,8 @@ const scopeOf = (eventType) => EVENT_TYPES[eventType]?.scope || "planting";
 
 const PRESET_LOCATIONS = [
   { label: "New York, US", lat: 40.7128, lng: -74.0060 },
-  { label: "London, UK", lat: 51.5074, lng: -0.1278 },
-  { label: "Tokyo, JP", lat: 35.6762, lng: 139.6503 },
-  { label: "Sydney, AU", lat: -33.8688, lng: 151.2093 },
+  { label: "Cairo, EG", lat: 30.0444, lng: 31.2357 },
+  { label: "Barcelona, ES", lat: 41.3851, lng: 2.1775 },
 ];
 
 // Temporary: until there's a garden picker backed by a real /api/gardens
@@ -504,7 +503,7 @@ ${weatherSummary}`;
       <Styles />
       <header className="sg-header">
         <div className="sg-brand"><Sprout size={20} /><span>homeGnome</span></div>
-        <button className="sg-reset" onClick={resetDemo} title="Reset demo data"><RotateCcw size={14} /> Reset demo</button>
+        <button className="sg-reset" onClick={ } title="Reset demo data"><RotateCcw size={14} /> Reset demo</button>
       </header>
 
       {!garden?.location ? (
@@ -537,7 +536,7 @@ ${weatherSummary}`;
         {tab === "capture" && (
           <section className="sg-panel">
             <h1>What's happening in the garden?</h1>
-            <p className="sg-sub">Type or speak a note — homeGnome will turn it into structured entries you can confirm.</p>
+            <p className="sg-sub">Tell homeGnome about an even in your garden, he will keep track of it for you.</p>
             <div className="sg-capture-box">
               <textarea value={note} onChange={(e) => setNote(e.target.value)} placeholder="e.g. Watered the balcony tomato, and I think the basil has some aphids on the underside of the leaves" rows={4} />
               <div className="sg-capture-actions">
@@ -593,7 +592,7 @@ ${weatherSummary}`;
                 </div>
               ))}
             </div>
-            <p className="sg-footnote">Every save appends an immutable event — nothing here is edited in place.</p>
+            <p className="sg-footnote">Every save adds an event - nothing can be edit (yet).</p>
           </section>
         )}
 
@@ -707,7 +706,7 @@ ${weatherSummary}`;
         {tab === "chat" && (
           <section className="sg-panel sg-chat-panel">
             <h1>Ask homeGnome</h1>
-            <p className="sg-sub">Grounded in your garden, containers, event log, reference data, and today's weather.</p>
+            <p className="sg-sub">He can help you keep manage your garden!</p>
             <div className="sg-chat-thread">
               {chatMessages.length === 0 && <div className="sg-chat-empty">Try: "Is my tomato's soil okay?" or "Should I water today given the weather?"</div>}
               {chatMessages.map((m, i) => <div key={i} className={`sg-chat-msg ${m.role}`}>{m.text}</div>)}
