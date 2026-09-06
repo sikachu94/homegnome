@@ -4,6 +4,7 @@ import {
   Droplets, Scissors, Bug, Sparkles, MapPin, CloudRain, Snowflake, Thermometer,
   Camera, Box, Layers, ImagePlus, Apple, Leaf, Carrot, Flower2, Wheat,
 } from "lucide-react";
+import { Analytics } from "@vercel/analytics/react";
 import { apiChat, apiExtract, apiGardens, apiCreatePlanting, apiCreateEvent, apiUpdateGarden } from "./api.js";
 import gnomeLogo from "./assets/gnome_only.jpg";
 
@@ -774,6 +775,7 @@ ${weatherSummary}`;
           </section>
         )}
       </main>
+      <Analytics />
     </div>
   );
 }
