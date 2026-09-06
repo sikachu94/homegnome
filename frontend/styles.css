@@ -1,26 +1,30 @@
-@import url('https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;9..144,600&family=Inter:wght@400;500;600&display=swap');
+/* @import url('https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;9..144,600;9..144,700&family=Inter:wght@400;500;600&display=swap'); */
 
-/* --muted darkened from #6B7566 to pass WCAG AA at small sizes (was ~4.1:1 on white) */
 .sg-root {
   --ink: #1F2A22;
-  --canvas: #EEF1E7;
+  --canvas: #F3F1E7;
   --panel: #FFFFFF;
   --moss: #4B6B4F;
-  --moss-dark: #37502F;
+  --moss-dark: #2F4A32;
   --clay: #8B5E3C;
-  --gold: #B08D1F;
-  --line: #DBD7C6;
+  --clay-soft: #F3E6D8;
+  --gold: #8A6D18;
+  --gold-soft: #FBF1D6;
+  --line: #DED9C8;
   --muted: #5A6357;
   font-family: 'Inter', sans-serif;
   color: var(--ink);
   background: var(--canvas);
   height: 100dvh;
   height: 100vh;
-  /* dvh with vh fallback for older browsers */
   display: flex;
   flex-direction: column;
-  border-radius: 12px;
   overflow: hidden;
+}
+
+*:focus-visible {
+  outline: 2px solid var(--moss);
+  outline-offset: 2px;
 }
 
 .sg-loading {
@@ -29,6 +33,7 @@
   flex-direction: row;
   gap: 8px;
   padding: 60px;
+  color: var(--muted);
 }
 
 .spin {
@@ -41,71 +46,66 @@
   }
 }
 
-/* Header: compact by default, even smaller on narrow screens */
+/* ---------- Header: quiet, compact — the wordmark carries the personality ---------- */
 .sg-header {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 12px 16px;
-  border-bottom: 1px solid var(--line);
-  background: var(--panel);
+  padding: 14px 18px 10px;
   flex-shrink: 0;
 }
 
 .sg-brand {
   display: flex;
   align-items: center;
-  gap: 8px;
+  gap: 9px;
   font-family: 'Fraunces', serif;
   font-weight: 600;
-  font-size: 18px;
+  font-size: 19px;
   color: var(--moss-dark);
+  letter-spacing: -0.01em;
 }
 
 .sg-brand img {
-  width: 32px;
-  height: 32px;
+  width: 64px;
+  height: 64px;
   object-fit: cover;
   border-radius: 50%;
+  border: 1px solid var(--line);
 }
 
-/* Icon-only / small buttons: pad hit area to 44px without growing the visible icon */
 .sg-reset {
   display: flex;
   align-items: center;
   justify-content: center;
-  gap: 6px;
-  font-size: 12px;
   color: var(--muted);
   background: none;
   border: none;
   cursor: pointer;
-  min-width: 44px;
-  min-height: 44px;
-  padding: 6px 10px;
-  border-radius: 6px;
+  min-width: 40px;
+  min-height: 40px;
+  border-radius: 50%;
 }
 
 .sg-reset:hover {
-  background: var(--canvas);
+  background: var(--panel);
+  color: var(--ink);
 }
 
 .sg-reset.sm {
-  min-width: 36px;
-  min-height: 36px;
-  padding: 4px 8px;
-  font-size: 11px;
+  min-width: 34px;
+  min-height: 34px;
 }
 
+/* ---------- Weather: one condensed line, like a margin note ---------- */
 .sg-weatherbar {
   display: flex;
   align-items: center;
-  gap: 12px;
+  gap: 10px;
   flex-wrap: wrap;
-  padding: 8px 16px;
-  background: #F4F6EE;
-  border-bottom: 1px solid var(--line);
-  font-size: 12.5px;
+  padding: 0 18px 14px;
+  font-size: 13px;
+  color: var(--muted);
   flex-shrink: 0;
 }
 
@@ -122,13 +122,17 @@
 
 .sg-chip {
   border: 1px solid var(--line);
-  background: #fff;
+  background: var(--panel);
   border-radius: 999px;
-  padding: 8px 12px;
-  font-size: 13px;
+  padding: 7px 12px;
+  font-size: 12.5px;
   cursor: pointer;
   color: var(--ink);
-  min-height: 36px;
+  min-height: 34px;
+}
+
+.sg-chip:hover {
+  border-color: var(--moss);
 }
 
 .sg-weather-loc {
@@ -136,70 +140,40 @@
   align-items: center;
   gap: 5px;
   font-weight: 600;
+  color: var(--ink);
 }
 
 .sg-weather-data {
   display: flex;
   align-items: center;
   gap: 10px;
-  color: var(--muted);
 }
 
 .sg-weather-err {
-  color: #B23B34;
+  color: #A5433A;
 }
 
-/* Top tabs are now used only on wide screens; mobile gets a fixed bottom nav (see below) */
-.sg-tabs {
-  display: flex;
-  gap: 4px;
-  padding: 8px 16px;
-  background: var(--panel);
-  border-bottom: 1px solid var(--line);
-  flex-shrink: 0;
-}
-
-.sg-tabs button {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  padding: 10px 14px;
-  border-radius: 8px;
-  border: none;
-  background: none;
-  font-size: 13.5px;
-  font-weight: 500;
-  color: var(--muted);
-  cursor: pointer;
-  font-family: 'Inter', sans-serif;
-  min-height: 44px;
-}
-
-.sg-tabs button.active {
-  background: var(--canvas);
-  color: var(--moss-dark);
-}
-
-/* Single scroll region: only .sg-main scrolls. Bottom nav padding reserves space so content isn't hidden behind it on mobile. */
+/* ---------- Main scroll region (the only one) ---------- */
 .sg-main {
   flex: 1;
   overflow-y: auto;
   -webkit-overflow-scrolling: touch;
-  padding: 20px;
+  padding: 4px 18px 24px;
 }
 
 .sg-panel h1 {
   font-family: 'Fraunces', serif;
-  font-size: 22px;
+  font-size: 23px;
   font-weight: 600;
-  margin: 0 0 4px;
+  margin: 4px 0 4px;
+  letter-spacing: -0.01em;
 }
 
 .sg-panel h2 {
   font-size: 14px;
   font-weight: 600;
   margin: 0 0 10px;
-  color: var(--moss-dark);
+  color: var(--ink);
 }
 
 .sg-sub {
@@ -207,31 +181,54 @@
   font-size: 13.5px;
   margin: 0 0 18px;
   max-width: 60ch;
+  line-height: 1.5;
 }
 
+/* ---------- Capture box: the one hero moment — a page you write on ---------- */
 .sg-capture-box {
   background: var(--panel);
   border: 1px solid var(--line);
-  border-radius: 12px;
-  padding: 14px;
+  border-radius: 14px;
+  padding: 16px;
+  box-shadow: 0 1px 0 var(--line);
+  position: relative;
 }
 
-/* 16px minimum — anything smaller triggers iOS Safari's auto-zoom-on-focus */
+.sg-capture-box::before {
+  content: "";
+  position: absolute;
+  left: 16px;
+  top: 0;
+  bottom: 0;
+  width: 1px;
+  background: var(--line);
+  opacity: 0.6;
+  display: none;
+  /* subtle margin-rule motif, off by default so it never looks like a template line-grid glitch */
+}
+
 .sg-capture-box textarea {
   width: 100%;
   border: none;
   resize: vertical;
-  font-family: 'Inter', sans-serif;
+  font-family: 'Fraunces', serif;
   font-size: 16px;
+  line-height: 1.6;
   outline: none;
   background: none;
+  color: var(--ink);
+}
+
+.sg-capture-box textarea::placeholder {
+  color: var(--muted);
+  font-style: italic;
 }
 
 .sg-capture-actions {
   display: flex;
   justify-content: flex-end;
   gap: 8px;
-  margin-top: 8px;
+  margin-top: 10px;
 }
 
 .sg-primary,
@@ -241,8 +238,8 @@
   justify-content: center;
   gap: 6px;
   border: none;
-  border-radius: 8px;
-  padding: 10px 14px;
+  border-radius: 9px;
+  padding: 10px 16px;
   font-size: 14px;
   font-weight: 600;
   cursor: pointer;
@@ -255,25 +252,30 @@
   color: #fff;
 }
 
+.sg-primary:hover:not(:disabled) {
+  background: var(--moss-dark);
+}
+
 .sg-primary:disabled {
-  opacity: 0.45;
+  opacity: 0.4;
   cursor: default;
 }
 
 .sg-secondary {
   background: var(--canvas);
   color: var(--ink);
+  border: 1px solid var(--line);
 }
 
 .sg-secondary:disabled {
-  opacity: 0.45;
+  opacity: 0.4;
   cursor: default;
 }
 
 .sg-primary.sm,
 .sg-secondary.sm {
   padding: 8px 12px;
-  font-size: 13px;
+  font-size: 12.5px;
   min-height: 36px;
 }
 
@@ -282,49 +284,50 @@
   align-items: center;
   gap: 6px;
   border: 1px solid var(--line);
-  background: #fff;
-  border-radius: 8px;
-  padding: 10px 12px;
+  background: var(--panel);
+  border-radius: 9px;
+  padding: 10px 14px;
   font-size: 14px;
   cursor: pointer;
   min-height: 44px;
+  color: var(--ink);
 }
 
 .sg-mic.on {
-  background: #FDEDEC;
-  border-color: #C0574C;
-  color: #C0574C;
+  background: #F7E9E6;
+  border-color: #B5574B;
+  color: #8F3C33;
 }
 
 .sg-error {
-  color: #B23B34;
+  color: #A5433A;
   font-size: 12.5px;
   margin-top: 8px;
 }
 
-/* Lightweight success/error toast for write actions (no library needed) */
 .sg-toast {
   position: fixed;
   left: 50%;
-  bottom: calc(64px + env(safe-area-inset-bottom) + 12px);
+  bottom: calc(72px + env(safe-area-inset-bottom));
   transform: translateX(-50%);
   background: var(--ink);
   color: #fff;
   padding: 10px 16px;
-  border-radius: 8px;
+  border-radius: 9px;
   font-size: 13px;
   z-index: 50;
-  box-shadow: 0 4px 14px rgba(0, 0, 0, 0.2);
-  max-width: 90%;
+  box-shadow: 0 6px 18px rgba(0, 0, 0, 0.18);
+  max-width: 88%;
   text-align: center;
 }
 
 .sg-toast.error {
-  background: #B23B34;
+  background: #A5433A;
 }
 
+/* ---------- Draft cards: a proposed entry, visually pending — dashed, not solid ---------- */
 .sg-drafts {
-  margin-top: 22px;
+  margin-top: 24px;
 }
 
 .sg-drafts-head {
@@ -338,13 +341,13 @@
 
 .sg-draft-card {
   background: var(--panel);
-  border: 1px solid var(--line);
-  border-radius: 10px;
-  padding: 12px;
+  border: 1px dashed var(--line);
+  border-radius: 11px;
+  padding: 13px;
   margin-bottom: 10px;
   display: flex;
   flex-direction: column;
-  gap: 8px;
+  gap: 9px;
 }
 
 .sg-draft-row {
@@ -355,25 +358,25 @@
 }
 
 .sg-form-label {
-  font-size: 11px;
+  font-size: 12px;
   font-weight: 600;
   color: var(--muted);
-  text-transform: uppercase;
-  letter-spacing: 0.03em;
   margin-top: 2px;
 }
 
 .sg-pill {
   background: var(--canvas);
   color: var(--moss-dark);
-  font-size: 11px;
+  font-size: 11.5px;
   font-weight: 600;
-  padding: 3px 8px;
+  padding: 4px 9px;
   border-radius: 999px;
 }
 
 .sg-pill.muted {
   color: var(--muted);
+  background: transparent;
+  border: 1px solid var(--line);
 }
 
 .sg-icon-btn {
@@ -382,41 +385,48 @@
   border: none;
   cursor: pointer;
   color: var(--muted);
-  min-width: 44px;
-  min-height: 44px;
+  min-width: 40px;
+  min-height: 40px;
   display: flex;
   align-items: center;
   justify-content: center;
+  border-radius: 50%;
 }
 
-.sg-draft-payload {
-  font-size: 12px;
-  color: var(--muted);
-  font-family: monospace;
-  word-break: break-all;
+.sg-icon-btn:hover {
+  background: var(--canvas);
+  color: var(--ink);
+}
+
+/* Human-readable summary, not raw JSON — see CaptureTab change below */
+.sg-draft-summary {
+  font-size: 13px;
+  color: var(--ink);
+  line-height: 1.5;
 }
 
 .sg-draft-note {
-  font-size: 12.5px;
+  font-size: 13px;
   font-style: italic;
-  color: var(--ink);
+  color: var(--muted);
 }
 
 .sg-draft-card select,
 .sg-draft-card input {
   flex: 1;
   border: 1px solid var(--line);
-  border-radius: 6px;
-  padding: 10px 8px;
+  border-radius: 7px;
+  padding: 9px 10px;
   font-size: 16px;
   font-family: 'Inter', sans-serif;
-  background: #fff;
+  background: var(--panel);
   min-width: 110px;
   min-height: 44px;
+  color: var(--ink);
 }
 
 .sg-soil-total {
-  font-size: 11px;
+  font-size: 12px;
   color: var(--muted);
   padding: 4px 8px;
 }
@@ -431,12 +441,12 @@
   align-items: center;
   gap: 6px;
   border: 1px dashed var(--line);
-  border-radius: 6px;
+  border-radius: 7px;
   padding: 10px;
   font-size: 13px;
   color: var(--muted);
   cursor: pointer;
-  background: #fff;
+  background: var(--panel);
   min-height: 44px;
 }
 
@@ -444,12 +454,11 @@
   flex: 1;
 }
 
-/* Photo thumbnails: keep the visible thumb small but give the remove button a real hit area */
 .sg-photo-thumb {
   position: relative;
   width: 44px;
   height: 44px;
-  border-radius: 6px;
+  border-radius: 8px;
   overflow: hidden;
   flex-shrink: 0;
 }
@@ -464,11 +473,11 @@
   position: absolute;
   top: -8px;
   right: -8px;
-  background: rgba(0, 0, 0, 0.65);
+  background: rgba(31, 42, 34, 0.75);
   border: none;
   border-radius: 50%;
-  width: 28px;
-  height: 28px;
+  width: 26px;
+  height: 26px;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -476,6 +485,7 @@
   cursor: pointer;
 }
 
+/* ---------- Event log: a settled, quiet list — not another card ---------- */
 .sg-recent {
   margin-top: 28px;
 }
@@ -483,9 +493,13 @@
 .sg-event-row {
   display: flex;
   align-items: flex-start;
-  gap: 10px;
-  padding: 10px 0;
+  gap: 11px;
+  padding: 11px 0;
   border-bottom: 1px solid var(--line);
+}
+
+.sg-event-row:last-child {
+  border-bottom: none;
 }
 
 .sg-evt-icon {
@@ -497,17 +511,19 @@
 .sg-event-title {
   font-size: 13.5px;
   font-weight: 500;
+  color: var(--ink);
 }
 
 .sg-event-meta {
   font-size: 12px;
   color: var(--muted);
+  margin-top: 1px;
 }
 
 .sg-event-thumb {
-  width: 32px;
-  height: 32px;
-  border-radius: 6px;
+  width: 34px;
+  height: 34px;
+  border-radius: 7px;
   object-fit: cover;
   margin-left: auto;
 }
@@ -515,17 +531,18 @@
 .sg-footnote {
   color: var(--muted);
   font-size: 12px;
-  margin-top: 18px;
+  margin-top: 20px;
 }
 
+/* ---------- Garden overview: the notebook's cover page ---------- */
 .sg-garden-overview {
   background: var(--panel);
   border: 1px solid var(--line);
-  border-radius: 12px;
-  padding: 16px;
+  border-radius: 14px;
+  padding: 18px;
   display: flex;
   flex-direction: column;
-  gap: 12px;
+  gap: 14px;
 }
 
 .sg-garden-row {
@@ -536,7 +553,7 @@
 
 .sg-garden-name {
   font-family: 'Fraunces', serif;
-  font-size: 17px;
+  font-size: 18px;
   font-weight: 600;
   border: none;
   background: none;
@@ -550,70 +567,76 @@
 
 .sg-garden-row select {
   border: 1px solid var(--line);
-  border-radius: 6px;
-  padding: 8px;
+  border-radius: 7px;
+  padding: 8px 10px;
   font-size: 16px;
   font-family: 'Inter', sans-serif;
-  background: #fff;
+  background: var(--panel);
   min-height: 44px;
+  color: var(--ink);
 }
 
 .sg-garden-stats {
   display: flex;
-  gap: 22px;
+  gap: 24px;
   flex-wrap: wrap;
-  padding-top: 8px;
+  padding-top: 10px;
   border-top: 1px solid var(--line);
 }
 
 .sg-garden-stats div {
   display: flex;
   flex-direction: column;
-  gap: 2px;
+  gap: 3px;
 }
 
 .sg-garden-stats span {
-  font-size: 10.5px;
+  font-size: 11.5px;
   color: var(--muted);
-  text-transform: uppercase;
-  letter-spacing: 0.03em;
 }
 
 .sg-garden-stats strong {
-  font-size: 14px;
+  font-size: 15px;
+  font-weight: 600;
 }
 
 .sg-garden-notes {
   border: 1px solid var(--line);
-  border-radius: 8px;
+  border-radius: 9px;
   padding: 10px;
   font-size: 16px;
   font-family: 'Inter', sans-serif;
   resize: vertical;
-  background: #fff;
+  background: var(--panel);
+  color: var(--ink);
 }
 
+.sg-garden-notes::placeholder {
+  color: var(--muted);
+}
+
+/* ---------- Plant cards: each one a small labeled specimen, not a SaaS tile ---------- */
 .sg-plant-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(230px, 1fr));
+  grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
   gap: 14px;
 }
 
 .sg-plant-card {
   background: var(--panel);
   border: 1px solid var(--line);
-  border-radius: 12px;
+  border-radius: 14px;
   overflow: hidden;
   display: flex;
   flex-direction: column;
-  gap: 10px;
-  padding-bottom: 14px;
+  gap: 11px;
+  padding-bottom: 15px;
 }
 
 .sg-cover {
   position: relative;
   width: 100%;
-  height: 120px;
+  height: 118px;
   background: var(--canvas);
   display: flex;
   align-items: center;
@@ -628,18 +651,18 @@
 
 .sg-cover-generic {
   color: var(--moss);
-  opacity: 0.55;
+  opacity: 0.5;
 }
 
 .sg-cover-upload {
   position: absolute;
-  bottom: 6px;
-  right: 6px;
-  background: #fff;
+  bottom: 8px;
+  right: 8px;
+  background: var(--panel);
   border: 1px solid var(--line);
   border-radius: 50%;
-  width: 36px;
-  height: 36px;
+  width: 34px;
+  height: 34px;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -652,11 +675,14 @@
   justify-content: space-between;
   align-items: flex-start;
   padding: 0 14px;
+  gap: 8px;
 }
 
 .sg-plant-name {
+  font-family: 'Fraunces', serif;
   font-weight: 600;
-  font-size: 14.5px;
+  font-size: 15px;
+  color: var(--ink);
 }
 
 .sg-plant-species {
@@ -665,24 +691,31 @@
   font-style: italic;
 }
 
+/* Stage badge: neutral by default, gold only when it's actually a ready/flowering signal */
 .sg-stage {
   background: var(--canvas);
-  color: var(--moss-dark);
-  font-size: 11px;
+  color: var(--ink);
+  font-size: 11.5px;
   font-weight: 600;
-  padding: 3px 9px;
+  padding: 4px 10px;
   border-radius: 999px;
-  text-transform: capitalize;
+  white-space: nowrap;
+}
+
+.sg-stage.ready {
+  background: var(--gold-soft);
+  color: var(--gold);
 }
 
 .sg-stage.ended {
-  background: #F1EEE6;
+  background: transparent;
+  border: 1px solid var(--line);
   color: var(--muted);
 }
 
 .sg-plant-stats {
   display: flex;
-  gap: 14px;
+  gap: 16px;
   padding: 0 14px;
 }
 
@@ -693,24 +726,23 @@
 }
 
 .sg-plant-stats span {
-  font-size: 10.5px;
+  font-size: 11px;
   color: var(--muted);
-  text-transform: uppercase;
-  letter-spacing: 0.03em;
 }
 
 .sg-plant-stats strong {
   font-size: 14px;
+  font-weight: 600;
 }
 
 .sg-container-info {
   display: flex;
   flex-direction: column;
-  gap: 3px;
-  padding: 8px 14px 0;
+  gap: 4px;
+  padding: 9px 14px 0;
   border-top: 1px solid var(--line);
   margin: 0 14px;
-  font-size: 11.5px;
+  font-size: 12px;
   color: var(--muted);
 }
 
@@ -724,22 +756,24 @@
   display: flex;
   align-items: center;
   gap: 6px;
-  background: #FBF0E4;
+  background: var(--clay-soft);
   color: var(--clay);
-  font-size: 12px;
-  padding: 6px 8px;
-  border-radius: 6px;
+  font-size: 12.5px;
+  padding: 7px 9px;
+  border-radius: 8px;
   margin: 0 14px;
 }
 
 .sg-reference {
-  font-size: 11.5px;
+  font-size: 12px;
   color: var(--muted);
   border-top: 1px solid var(--line);
-  padding-top: 8px;
+  padding-top: 9px;
   margin: 0 14px;
+  line-height: 1.5;
 }
 
+/* ---------- Chat: correspondence, not a support widget ---------- */
 .sg-chat-panel {
   display: flex;
   flex-direction: column;
@@ -753,23 +787,24 @@
   display: flex;
   flex-direction: column;
   gap: 10px;
-  padding: 10px 0;
+  padding: 6px 0 10px;
   min-height: 200px;
 }
 
 .sg-chat-empty {
   color: var(--muted);
   font-size: 13px;
-  padding: 20px;
+  padding: 24px 12px;
   text-align: center;
+  line-height: 1.6;
 }
 
 .sg-chat-msg {
-  max-width: 75%;
-  padding: 10px 13px;
-  border-radius: 12px;
+  max-width: 78%;
+  padding: 11px 14px;
+  border-radius: 14px;
   font-size: 13.5px;
-  line-height: 1.5;
+  line-height: 1.55;
   white-space: pre-wrap;
 }
 
@@ -777,12 +812,14 @@
   align-self: flex-end;
   background: var(--moss);
   color: #fff;
+  border-bottom-right-radius: 4px;
 }
 
 .sg-chat-msg.assistant {
   align-self: flex-start;
   background: var(--panel);
   border: 1px solid var(--line);
+  border-bottom-left-radius: 4px;
 }
 
 .sg-chat-input {
@@ -794,22 +831,21 @@
 .sg-chat-input input {
   flex: 1;
   border: 1px solid var(--line);
-  border-radius: 8px;
-  padding: 10px 12px;
+  border-radius: 9px;
+  padding: 10px 14px;
   font-size: 16px;
   font-family: 'Inter', sans-serif;
   min-height: 44px;
+  background: var(--panel);
+  color: var(--ink);
 }
 
-/* Single nav pattern, used at every width — no top tabs, no breakpoint swap */
-.sg-tabs {
-  display: none;
+.sg-chat-input input::placeholder {
+  color: var(--muted);
 }
 
-/* component removed from markup below; rule kept only in case anything still references it */
-
+/* ---------- Single nav: bottom, always, at every width ---------- */
 .sg-bottom-nav {
-  display: block;
   position: sticky;
   bottom: 0;
   left: 0;
@@ -818,13 +854,11 @@
   border-top: 1px solid var(--line);
   padding-bottom: env(safe-area-inset-bottom);
   flex-shrink: 0;
-  z-index: 10;
 }
 
 .sg-bottom-nav-row {
   display: flex;
   max-width: 480px;
-  /* keeps the nav from stretching thin across a wide desktop window */
   margin: 0 auto;
 }
 
@@ -834,16 +868,17 @@
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  gap: 2px;
-  min-height: 56px;
+  gap: 3px;
+  min-height: 58px;
   border: none;
   background: none;
   color: var(--muted);
-  font-size: 11px;
+  font-size: 11.5px;
   font-family: 'Inter', sans-serif;
   cursor: pointer;
 }
 
 .sg-bottom-nav button.active {
   color: var(--moss-dark);
+  font-weight: 600;
 }
