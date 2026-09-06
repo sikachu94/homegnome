@@ -22,14 +22,16 @@ def _ensure_default_garden(db, user_id: str) -> dict:
 
 
 def _flatten_planting(item: dict) -> dict:
-    """`plantings.plant_id` points at the normalized species catalog
-    (`plants`), but the rest of the app (and the AI prompts) work in plain
-    species names. Flatten the embedded `plants` row into `species` (plus a
-    richer `species_info` blob) so callers don't need to know about the
-    join.
+    """Normalize joined plant metadata into the app-facing shape.
+
+    The database stores the reference via plant_id and the catalog row under
+    `plants(...)`; older client code may still send or expect a direct
+    `species` string. We support both by flattening the join while preserving
+    any existing direct fields.
     """
     species = item.pop("plants", None) or {}
-    item["species"] = species.get("plant_name")
+    item["species"] = item.get("species") or species.get("plant_name")
+    item["plant_id"] = item.get("plant_id") or species.get("id")
     item["species_info"] = {
         "harvest_type": species.get("harvest_type"),
         "life_cycle_type": species.get("life_cycle_type"),
@@ -56,7 +58,7 @@ def list_gardens(user_id: str = Depends(get_current_user), db = Depends(get_db))
 
     plantings_raw = (
         db.table("plantings")
-        .select("*, plants(plant_name, harvest_type, life_cycle_type, latin_name, variety)")
+        .select("*, plants(id, plant_name, harvest_type, life_cycle_type, latin_name, variety)")
         .in_("garden_id", garden_ids)
         .execute()
         .data

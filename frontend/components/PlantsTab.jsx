@@ -8,7 +8,7 @@ import { PlantCard } from "./PlantCard.jsx";
 const blankSoilRow = () => ({ id: uid("soil"), component: "", percent: 0 });
 const blankNewPlanting = () => ({
   nickname: "", species: "Tomato", entry_stage: "seedling", acquisition_source: "purchased_seedling",
-  containerType: "pot", material: "terracotta", containerSize: "", placement: "",
+  containerMode: "new", containerId: "", containerType: "pot", material: "terracotta", containerSize: "", placement: "",
   soilComposition: [{ id: uid("soil"), component: "Potting mix", percent: 100 }],
   photo: null,
 });
@@ -29,6 +29,7 @@ export function PlantsTab({ garden, plantings, containers, events, addPlanting, 
 
   const handleCreatePlanting = async () => {
     if (!newPlanting.nickname.trim()) return;
+    if (newPlanting.containerMode === "existing" && !newPlanting.containerId) return;
     await addPlanting(newPlanting);
     setNewPlanting(blankNewPlanting());
     setShowAddForm(false);
@@ -70,13 +71,30 @@ export function PlantsTab({ garden, plantings, containers, events, addPlanting, 
 
           <div className="sg-form-label">Container</div>
           <div className="sg-draft-row">
-            <select value={newPlanting.containerType} onChange={(e) => setNewPlanting((n) => ({ ...n, containerType: e.target.value }))}>{CONTAINER_TYPES.map((t) => <option key={t} value={t}>{t.replace("_", " ")}</option>)}</select>
-            <select value={newPlanting.material} onChange={(e) => setNewPlanting((n) => ({ ...n, material: e.target.value }))}>{CONTAINER_MATERIALS.map((m) => <option key={m} value={m}>{m}</option>)}</select>
-            <input type="number" min="0" step="0.5" placeholder="Size (liters)" value={newPlanting.containerSize} onChange={(e) => setNewPlanting((n) => ({ ...n, containerSize: e.target.value }))} style={{ maxWidth: "130px" }} />
+            <select value={newPlanting.containerMode} onChange={(e) => setNewPlanting((n) => ({ ...n, containerMode: e.target.value, containerId: e.target.value === "existing" ? (n.containerId || containers[0]?.id || "") : "" }))}>
+              <option value="new">Create new container</option>
+              <option value="existing" disabled={containers.length === 0}>Use existing container</option>
+            </select>
           </div>
-          <div className="sg-draft-row">
-            <input placeholder="Placement, e.g. south balcony rail" value={newPlanting.placement} onChange={(e) => setNewPlanting((n) => ({ ...n, placement: e.target.value }))} />
-          </div>
+          {newPlanting.containerMode === "existing" ? (
+            <div className="sg-draft-row">
+              <select value={newPlanting.containerId} onChange={(e) => setNewPlanting((n) => ({ ...n, containerId: e.target.value }))}>
+                <option value="">Select a container</option>
+                {containers.map((container) => <option key={container.id} value={container.id}>{container.name}</option>)}
+              </select>
+            </div>
+          ) : (
+            <>
+              <div className="sg-draft-row">
+                <select value={newPlanting.containerType} onChange={(e) => setNewPlanting((n) => ({ ...n, containerType: e.target.value }))}>{CONTAINER_TYPES.map((t) => <option key={t} value={t}>{t.replace("_", " ")}</option>)}</select>
+                <select value={newPlanting.material} onChange={(e) => setNewPlanting((n) => ({ ...n, material: e.target.value }))}>{CONTAINER_MATERIALS.map((m) => <option key={m} value={m}>{m}</option>)}</select>
+                <input type="number" min="0" step="0.5" placeholder="Size (liters)" value={newPlanting.containerSize} onChange={(e) => setNewPlanting((n) => ({ ...n, containerSize: e.target.value }))} style={{ maxWidth: "130px" }} />
+              </div>
+              <div className="sg-draft-row">
+                <input placeholder="Placement, e.g. south balcony rail" value={newPlanting.placement} onChange={(e) => setNewPlanting((n) => ({ ...n, placement: e.target.value }))} />
+              </div>
+            </>
+          )}
 
           <div className="sg-form-label">Soil composition</div>
           {newPlanting.soilComposition.map((row) => (

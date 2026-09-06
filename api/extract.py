@@ -38,14 +38,19 @@ class ExtractRequest(BaseModel):
 def extract_events(req: ExtractRequest, user_id: str = Depends(get_current_user), db = Depends(get_db)):
     verify_garden_ownership(db, req.garden_id, user_id)
 
-    # 1. Fetch this garden's active plantings to give the model as context
+    # 1. Fetch this garden's active plantings to give the model as context.
+    # The DB stores the canonical species reference by plant_id and keeps the
+    # catalog in the `plants` table, so keep the join visible to the model.
     plantings_res = (
         db.table("plantings")
-        .select("id, nickname, species")
+        .select("id, nickname, plant_id, plants(id, plant_name, latin_name)")
         .eq("garden_id", req.garden_id)
         .execute()
     )
-    plantings_context = "\n".join(f"{p['id']} | {p['nickname']} | {p['species']}" for p in plantings_res.data)
+    plantings_context = "\n".join(
+        f"{p['id']} | {p['nickname']} | {((p.get('plants') or {}).get('plant_name') or p.get('species') or p.get('plant_id'))}"
+        for p in plantings_res.data
+    )
 
     schema = EventDraftList.model_json_schema()
     system_instruction = f"""You convert a home gardener's freeform note into structured event-log entries for myGnomie, a garden tracker.

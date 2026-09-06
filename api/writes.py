@@ -13,7 +13,8 @@ class Record(BaseModel):
 
 
 class PlantingCreate(BaseModel):
-    container: Record
+    container: Record | None = None
+    container_id: str | None = None
     planting: Record
     events: list[Record] = Field(default_factory=list)
 
@@ -37,6 +38,27 @@ class GardenUpdate(BaseModel):
 def _insert(db, table: str, record: dict[str, Any]) -> dict[str, Any]:
     result = db.table(table).insert([record]).execute()
     return result.data[0]
+
+
+def _resolve_plant_id(db, record: dict[str, Any]) -> str:
+    plant_id = record.get("plant_id")
+    if plant_id:
+        return plant_id
+
+    species = record.get("species")
+    if not species:
+        raise HTTPException(status_code=422, detail="Planting must include a species or plant_id")
+
+    result = (
+        db.table("plants")
+        .select("id")
+        .eq("plant_name", species)
+        .limit(1)
+        .execute()
+    )
+    if not result.data:
+        raise HTTPException(status_code=422, detail=f"Unknown plant species in reference catalog: {species}")
+    return result.data[0]["id"]
 
 
 def _verify_event_entity(db, garden_id: str, event: dict[str, Any]) -> None:
@@ -70,13 +92,36 @@ def create_planting(
 ):
     verify_garden_ownership(db, garden_id, user_id)
     planting = {**request.planting.model_dump(exclude_unset=True), "garden_id": garden_id}
-    container = {**request.container.model_dump(exclude_unset=True), "garden_id": garden_id}
-    client_container_id = container.pop("id", None)
-    client_planting_id = planting.pop("id", None)
-    if planting.get("garden_id") != container.get("garden_id"):
-        raise HTTPException(status_code=422, detail="Records must belong to the same garden")
 
-    created_container = _insert(db, "containers", container)
+    if request.container_id:
+        created_container = (
+            db.table("containers")
+            .select("*")
+            .eq("id", request.container_id)
+            .eq("garden_id", garden_id)
+            .limit(1)
+            .execute()
+        )
+        if not created_container.data:
+            raise HTTPException(status_code=404, detail="Container not found in garden")
+        created_container = created_container.data[0]
+        client_container_id = request.container_id
+    else:
+        if request.container is None:
+            raise HTTPException(status_code=422, detail="Either container_id or a new container payload is required")
+        container = {**request.container.model_dump(exclude_unset=True), "garden_id": garden_id}
+        client_container_id = container.pop("id", None)
+        if planting.get("garden_id") != container.get("garden_id"):
+            raise HTTPException(status_code=422, detail="Records must belong to the same garden")
+        created_container = _insert(db, "containers", container)
+
+    client_planting_id = planting.pop("id", None)
+    planting["container_id"] = created_container.get("id")
+    plant_id = _resolve_plant_id(db, planting)
+    planting["plant_id"] = plant_id
+    planting.pop("species", None)
+    planting.pop("species_info", None)
+
     created_planting = _insert(db, "plantings", planting)
     events = []
     for event in request.events:
