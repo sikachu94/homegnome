@@ -92,7 +92,7 @@ export function useGardenData() {
     const container = existingContainerId
       ? null
       : {
-          id: uid("container"), garden_id: GARDEN_ID, name: `${form.nickname.trim()} container`,
+          id: uid("container"), garden_id: GARDEN_ID, name: `${form.material} ${form.containerType} container`,
           type: form.containerType, mobility: "movable", material: form.material,
           volume_l: form.containerSize ? Number(form.containerSize) : undefined,
           created_at: now,

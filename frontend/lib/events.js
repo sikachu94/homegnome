@@ -35,8 +35,13 @@ export function buildEvent(draft, gardenId) {
 }
 
 /** Human-readable label for an event's subject, for the recent-log list. */
-export function labelForEntity(event, plantings) {
-  return event.entity_type === "garden"
-    ? "Weather"
-    : plantings.find((p) => p.id === event.entity_id)?.nickname || "Unknown planting";
+export function labelForEntity(event, plantings, containers) {
+  if (event.entity_type === "garden") return "Weather";
+  if (event.entity_type === "container") {
+    const container = containers.find((item) => item.id === event.entity_id);
+    if (!container) return "Unknown container";
+    const typedName = [container.material, container.type, "container"].filter(Boolean).join(" ");
+    return typedName || container.name || "Unknown container";
+  }
+  return plantings.find((planting) => planting.id === event.entity_id)?.nickname || "Unknown planting";
 }

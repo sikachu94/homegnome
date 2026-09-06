@@ -169,7 +169,7 @@ def test_create_planting_persists_container_planting_and_setup_events(monkeypatc
                 "planting": {"id": "planting-1", "species": "Tomato", "nickname": "Tom"},
                 "events": [
                     {"id": "event-1", "entity_type": "container", "entity_id": "container-1", "event_type": "container_setup"},
-                    {"id": "event-2", "entity_type": "planting", "entity_id": "planting-1", "event_type": "planting_setup"},
+                    {"id": "event-2", "entity_type": "planting", "entity_id": "planting-1", "event_type": "planting_setup", "payload": {"container_id": "container-1"}},
                 ],
             },
         )
@@ -182,6 +182,8 @@ def test_create_planting_persists_container_planting_and_setup_events(monkeypatc
     assert response.json()["container"]["garden_id"] == "garden-1"
     assert len(response.json()["events"]) == 2
     assert {event["entity_id"] for event in response.json()["events"]} == {"container-db-id", "planting-db-id"}
+    planting_event = next(event for event in response.json()["events"] if event["event_type"] == "planting_setup")
+    assert planting_event["payload"]["container_id"] == "container-db-id"
 
 
 def test_create_planting_allows_existing_container_using_reference_plant_catalog(monkeypatch):
@@ -247,6 +249,65 @@ def test_create_planting_allows_existing_container_using_reference_plant_catalog
     assert response.status_code == 201
     assert response.json()["planting"]["plant_id"] == "plant-reference-id"
     assert response.json()["container"]["id"] == "container-existing-id"
+
+
+def test_create_planting_auto_logs_default_lifecycle_events(monkeypatch):
+    class FakeQuery:
+        def __init__(self, table):
+            self.table = table
+            self.rows = []
+
+        def select(self, _columns):
+            return self
+
+        def eq(self, _column, _value):
+            return self
+
+        def limit(self, _value):
+            return self
+
+        def insert(self, rows):
+            self.rows = rows
+            return self
+
+        def execute(self):
+            if self.table == "gardens":
+                return type("Result", (), {"data": [{"id": "garden-1"}]})()
+            if self.table == "plants":
+                return type("Result", (), {"data": [{"id": "plant-reference-id", "plant_name": "Tomato"}]})()
+            if self.table == "containers":
+                row = {**self.rows[0], "id": "container-new-id"}
+                return type("Result", (), {"data": [row]})()
+            if self.table == "plantings":
+                row = {**self.rows[0], "id": "planting-new-id"}
+                return type("Result", (), {"data": [row]})()
+            if self.table == "garden_events":
+                row = {**self.rows[0], "id": f"event-{self.rows[0].get('event_type')}-{self.rows[0].get('entity_type')}"}
+                return type("Result", (), {"data": [row]})()
+            return type("Result", (), {"data": []})()
+
+    class FakeSupabase:
+        def table(self, table):
+            return FakeQuery(table)
+
+    fake_supabase = FakeSupabase()
+    app.dependency_overrides[writes_api.get_current_user] = lambda: "user-1"
+    app.dependency_overrides[writes_api.get_db] = lambda: fake_supabase
+    try:
+        response = client.post(
+            "/api/gardens/garden-1/plantings",
+            json={
+                "container": {"name": "New pot"},
+                "planting": {"species": "Tomato", "nickname": "Vista"},
+                "events": [],
+            },
+        )
+    finally:
+        app.dependency_overrides.clear()
+
+    assert response.status_code == 201
+    event_types = {event["event_type"] for event in response.json()["events"]}
+    assert event_types == {"container_setup", "planting_setup"}
 
 
 def test_append_event_rejects_entity_outside_owned_garden(monkeypatch):

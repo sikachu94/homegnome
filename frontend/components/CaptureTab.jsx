@@ -7,7 +7,7 @@ import { uid, fmtDateTime } from "../lib/format.js";
 import { fileToDataUrl } from "../lib/imageUtils.js";
 import { EventIcon } from "./EventIcon.jsx";
 
-export function CaptureTab({ plantings, events, addEvent, resetSignal }) {
+export function CaptureTab({ plantings, containers, events, addEvent, resetSignal }) {
   const [note, setNote] = useState("");
   const [listening, setListening] = useState(false);
   const [extracting, setExtracting] = useState(false);
@@ -123,7 +123,7 @@ export function CaptureTab({ plantings, events, addEvent, resetSignal }) {
           <div key={e.id} className="sg-event-row">
             <EventIcon type={e.event_type} />
             <div>
-              <div className="sg-event-title">{labelForEntity(e, plantings)} · {e.event_type.replace("_", " ")}</div>
+              <div className="sg-event-title">{labelForEntity(e, plantings, containers)} · {e.event_type.replace("_", " ")}</div>
               <div className="sg-event-meta">{fmtDateTime(e.timestamp)}{e.note ? ` — "${e.note}"` : ""}</div>
             </div>
             {e.media?.length ? <img className="sg-event-thumb" src={e.media[0]} alt="" /> : null}
