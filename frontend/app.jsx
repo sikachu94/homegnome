@@ -5,6 +5,7 @@ import {
   Camera, Box, Layers, ImagePlus, Apple, Leaf, Carrot, Flower2, Wheat,
 } from "lucide-react";
 import { apiChat, apiExtract } from "./api.js";
+import gnomeLogo from "../docs/gnome_only.jpg";
 
 // ---------------------------------------------------------------------------
 // Static reference data
@@ -502,7 +503,7 @@ ${weatherSummary}`;
     <div className="sg-root">
       <Styles />
       <header className="sg-header">
-        <div className="sg-brand"><Sprout size={20} /><span>homeGnome</span></div>
+        <div className="sg-brand"><img src={gnomeLogo} alt="homeGnome logo" /><span>homeGnome</span></div>
         <button className="sg-reset" onClick={resetDemo} title="Reset demo data"><RotateCcw size={14} /> Reset demo</button>
       </header>
 
@@ -744,7 +745,8 @@ function Styles() {
       .spin { animation:sg-spin 1s linear infinite; }
       @keyframes sg-spin { to { transform:rotate(360deg); } }
       .sg-header { display:flex; align-items:center; justify-content:space-between; padding:16px 20px; border-bottom:1px solid var(--line); background:var(--panel); }
-      .sg-brand { display:flex; align-items:center; gap:8px; font-family:'Fraunces',serif; font-weight:600; font-size:19px; color:var(--moss-dark); }
+      .sg-brand { display:flex; align-items:center; gap:8px; font-family:'Fraunces',serif; font-weight:600; font-size:24px; color:var(--moss-dark); }
+      .sg-brand img { width:78px; height:78px; object-fit:cover; border-radius:50%; }
       .sg-reset { display:flex; align-items:center; gap:6px; font-size:12px; color:var(--muted); background:none; border:none; cursor:pointer; padding:6px 8px; border-radius:6px; }
       .sg-reset:hover { background:var(--canvas); }
       .sg-reset.sm { padding:4px 7px; font-size:11px; }
