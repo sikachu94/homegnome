@@ -15,6 +15,31 @@ export const EVENT_TYPES = {
 
 export const scopeOf = (eventType) => EVENT_TYPES[eventType]?.scope || "planting";
 
+// Plain-language stand-ins for raw event_type strings. Anywhere a person
+// reads the log, they should see "Watered" and "Pest spotted", not
+// "watering" or "pest_sighting" with underscores swapped for spaces.
+export const EVENT_TYPE_LABELS = {
+  watering: "Watered",
+  growth_measurement: "Measurement taken",
+  harvest: "Harvested",
+  pest_sighting: "Pest spotted",
+  disease_sighting: "Disease spotted",
+  stage_change: "Growth stage changed",
+  planting_ended: "Planting ended",
+  photo_log: "Photo added",
+  rainfall: "Rain",
+  frost: "Frost",
+  container_setup: "Container set up",
+  planting_setup: "Planting added",
+  relocated: "Moved",
+  soil_amended: "Soil changed",
+  transplanted: "Transplanted",
+};
+
+export function labelForEventType(eventType) {
+  return EVENT_TYPE_LABELS[eventType] || eventType.replace(/_/g, " ");
+}
+
 /** Turns a parsed draft into a full event-log entry ready to persist. */
 export function buildEvent(draft, gardenId) {
   const scope = scopeOf(draft.event_type);
