@@ -598,7 +598,7 @@ ${weatherSummary}`;
 
         {tab === "plants" && (
           <section className="sg-panel">
-            <h1>My garden</h1>
+            <h1></h1>
 
             <div className="sg-garden-overview">
               <div className="sg-garden-row">
@@ -615,7 +615,7 @@ ${weatherSummary}`;
                 <div><span>Tracking since</span><strong>{garden?.established_at ? fmtDate(garden.established_at) : "—"}</strong></div>
                 <div><span>Location</span><strong>{garden?.label || "Not set"}</strong></div>
               </div>
-              <textarea className="sg-garden-notes" rows={2} placeholder="Notes about this garden (optional) — microclimate quirks, goals, anything homeGnome should know"
+              <textarea className="sg-garden-notes" rows={2} placeholder="Notes about the garden - microclimate, common pests, anything gnome should know."
                 value={garden?.notes || ""} onChange={(e) => updateGardenLocal({ notes: e.target.value })} onBlur={() => persistGarden(garden)} />
             </div>
 
@@ -706,7 +706,7 @@ ${weatherSummary}`;
         {tab === "chat" && (
           <section className="sg-panel sg-chat-panel">
             <h1>Ask homeGnome</h1>
-            <p className="sg-sub">He can help you keep manage your garden!</p>
+            <p className="sg-sub">He can help you manage your garden!</p>
             <div className="sg-chat-thread">
               {chatMessages.length === 0 && <div className="sg-chat-empty">Try: "Is my tomato's soil okay?" or "Should I water today given the weather?"</div>}
               {chatMessages.map((m, i) => <div key={i} className={`sg-chat-msg ${m.role}`}>{m.text}</div>)}
