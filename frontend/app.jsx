@@ -4,7 +4,7 @@ import {
   Droplets, Scissors, Bug, Sparkles, MapPin, CloudRain, Snowflake, Thermometer,
   Camera, Box, Layers, ImagePlus, Apple, Leaf, Carrot, Flower2, Wheat,
 } from "lucide-react";
-import { apiChat, apiExtract } from "./api.js";
+import { apiChat, apiExtract, apiGardens } from "./api.js";
 import gnomeLogo from "./assets/gnome_only.jpg";
 
 // ---------------------------------------------------------------------------
@@ -216,6 +216,8 @@ export default function App() {
 
   // garden state (identity + location/weather)
   const [garden, setGarden] = useState(null);
+  const [gardenRecords, setGardenRecords] = useState([]);
+  const [selectedGardenId, setSelectedGardenId] = useState(GARDEN_ID);
   const [weather, setWeather] = useState(null);
   const [weatherError, setWeatherError] = useState(null);
   const [locating, setLocating] = useState(false);
@@ -231,21 +233,64 @@ export default function App() {
   useEffect(() => {
     (async () => {
       let p, c, e, g;
-      try { const r = await storageGet("plantings"); p = r ? JSON.parse(r.value) : SEED_PLANTINGS; } catch { p = SEED_PLANTINGS; }
-      try { const r = await storageGet("containers"); c = r ? JSON.parse(r.value) : SEED_CONTAINERS; } catch { c = SEED_CONTAINERS; }
-      try { const r = await storageGet("events"); e = r ? JSON.parse(r.value) : SEED_EVENTS; } catch { e = SEED_EVENTS; }
+      let remoteGardens = [];
       try {
-        const r = await storageGet("garden");
-        g = r ? JSON.parse(r.value) : null;
-      } catch { g = null; }
-      if (!g) {
-        g = { ...DEFAULT_GARDEN, established_at: new Date().toISOString() };
-        try { await storageSet("garden", JSON.stringify(g)); } catch (err) { console.error(err); }
+        const response = await apiGardens();
+        remoteGardens = response.gardens || [];
+      } catch (err) {
+        console.warn("Could not load gardens from the API; using local demo data.", err);
+      }
+      if (remoteGardens.length) {
+        const initial = remoteGardens.find((item) => item.id === GARDEN_ID) || remoteGardens[0];
+        setGardenRecords(remoteGardens);
+        setSelectedGardenId(initial.id);
+        p = initial.plantings || [];
+        c = initial.containers || [];
+        e = initial.events || [];
+        g = initial;
+      } else {
+        try { const r = await storageGet("plantings"); p = r ? JSON.parse(r.value) : SEED_PLANTINGS; } catch { p = SEED_PLANTINGS; }
+        try { const r = await storageGet("containers"); c = r ? JSON.parse(r.value) : SEED_CONTAINERS; } catch { c = SEED_CONTAINERS; }
+        try { const r = await storageGet("events"); e = r ? JSON.parse(r.value) : SEED_EVENTS; } catch { e = SEED_EVENTS; }
+        try {
+          const r = await storageGet("garden");
+          g = r ? JSON.parse(r.value) : null;
+        } catch { g = null; }
+        if (!g) {
+          g = { ...DEFAULT_GARDEN, established_at: new Date().toISOString() };
+          try { await storageSet("garden", JSON.stringify(g)); } catch (err) { console.error(err); }
+        }
       }
       setPlantings(p); setContainers(c); setEvents(e); setGarden(g);
       setLoaded(true);
     })();
   }, []);
+
+  const activeGardenId = selectedGardenId === "all" ? GARDEN_ID : selectedGardenId;
+  const visiblePlantings = selectedGardenId === "all"
+    ? gardenRecords.flatMap((record) => record.plantings || [])
+    : plantings || [];
+  const visibleContainers = selectedGardenId === "all"
+    ? gardenRecords.flatMap((record) => record.containers || [])
+    : containers || [];
+  const visibleEvents = selectedGardenId === "all"
+    ? gardenRecords.flatMap((record) => record.events || [])
+    : events || [];
+
+  const selectGarden = (id) => {
+    if (id === "all") {
+      setSelectedGardenId(id);
+      return;
+    }
+    const record = gardenRecords.find((item) => item.id === id);
+    if (!record) return;
+    setSelectedGardenId(id);
+    setGarden(record);
+    setPlantings(record.plantings || []);
+    setContainers(record.containers || []);
+    setEvents(record.events || []);
+    setWeather(null);
+  };
 
   const persist = useCallback(async (nextPlantings, nextEvents, nextContainers) => {
     try {
@@ -282,10 +327,10 @@ export default function App() {
         const minTemp = data.daily?.temperature_2m_min?.[0];
         const auto = [];
         if (!alreadyRain && typeof precipToday === "number" && precipToday > 0.5) {
-          auto.push({ id: uid("evt"), timestamp: new Date().toISOString(), garden_id: GARDEN_ID, entity_type: "garden", entity_id: GARDEN_ID, category: "measurement", source: "external", event_type: "rainfall", payload: { amount_mm: precipToday }, confidence: "observed" });
+          auto.push({ id: uid("evt"), timestamp: new Date().toISOString(), garden_id: activeGardenId, entity_type: "garden", entity_id: activeGardenId, category: "measurement", source: "external", event_type: "rainfall", payload: { amount_mm: precipToday }, confidence: "observed" });
         }
         if (!alreadyFrost && typeof minTemp === "number" && minTemp < 0) {
-          auto.push({ id: uid("evt"), timestamp: new Date().toISOString(), garden_id: GARDEN_ID, entity_type: "garden", entity_id: GARDEN_ID, category: "observation", source: "external", event_type: "frost", payload: { severity: minTemp < -3 ? "hard" : "light" }, confidence: "observed" });
+          auto.push({ id: uid("evt"), timestamp: new Date().toISOString(), garden_id: activeGardenId, entity_type: "garden", entity_id: activeGardenId, category: "observation", source: "external", event_type: "frost", payload: { severity: minTemp < -3 ? "hard" : "light" }, confidence: "observed" });
         }
         if (auto.length) setEvents((prev) => { const next = [...prev, ...auto]; persist(null, next); return next; });
       } catch (err) {
@@ -340,7 +385,7 @@ export default function App() {
       // from Supabase's `plantings` table, so drafts will only match
       // plantings that actually exist there — not the local demo/seed
       // plantings this component keeps in localStorage.
-      const { drafts: rawDrafts } = await apiExtract(GARDEN_ID, note);
+      const { drafts: rawDrafts } = await apiExtract(activeGardenId, note);
       const withIds = (rawDrafts || []).map((d) => ({ ...d, draft_id: uid("draft"), media: [] }));
       setDrafts(withIds);
     } catch (err) {
@@ -360,9 +405,9 @@ export default function App() {
   const buildEvent = (draft) => {
     const scope = scopeOf(draft.event_type);
     return {
-      id: uid("evt"), timestamp: new Date().toISOString(), garden_id: GARDEN_ID,
+      id: uid("evt"), timestamp: new Date().toISOString(), garden_id: activeGardenId,
       entity_type: scope === "garden" ? "garden" : "planting",
-      entity_id: scope === "garden" ? GARDEN_ID : draft.planting_id,
+      entity_id: scope === "garden" ? activeGardenId : draft.planting_id,
       category: draft.category, source: "self", event_type: draft.event_type,
       payload: draft.payload || {}, note: draft.note || undefined,
       media: draft.media?.length ? draft.media : undefined,
@@ -398,13 +443,13 @@ export default function App() {
     if (!newPlanting.nickname.trim()) return;
     const now = new Date().toISOString();
     const container = {
-      id: uid("container"), garden_id: GARDEN_ID, name: `${newPlanting.nickname.trim()} container`,
+      id: uid("container"), garden_id: activeGardenId, name: `${newPlanting.nickname.trim()} container`,
       type: newPlanting.containerType, mobility: "movable", material: newPlanting.material,
       volume_l: newPlanting.containerSize ? Number(newPlanting.containerSize) : undefined,
       created_at: now,
     };
     const containerSetupEvent = {
-      id: uid("evt"), timestamp: now, garden_id: GARDEN_ID, entity_type: "container", entity_id: container.id,
+      id: uid("evt"), timestamp: now, garden_id: activeGardenId, entity_type: "container", entity_id: container.id,
       category: "lifecycle", source: "self", event_type: "container_setup",
       payload: {
         initial_placement: newPlanting.placement.trim() || "Unspecified",
@@ -414,7 +459,7 @@ export default function App() {
     };
     const planting = { id: uid("planting"), species: newPlanting.species, nickname: newPlanting.nickname.trim(), started_at: now };
     const plantingSetupEvent = {
-      id: uid("evt"), timestamp: now, garden_id: GARDEN_ID, entity_type: "planting", entity_id: planting.id,
+      id: uid("evt"), timestamp: now, garden_id: activeGardenId, entity_type: "planting", entity_id: planting.id,
       category: "lifecycle", source: "self", event_type: "planting_setup",
       payload: { container_id: container.id, entry_stage: newPlanting.entry_stage, acquisition_source: newPlanting.acquisition_source },
       media: newPlanting.photo ? [newPlanting.photo] : undefined,
@@ -433,7 +478,7 @@ export default function App() {
     if (!file) return;
     try {
       const dataUrl = await fileToDataUrl(file);
-      const event = { id: uid("evt"), timestamp: new Date().toISOString(), garden_id: GARDEN_ID, entity_type: "planting", entity_id: plantingId, category: "observation", source: "self", event_type: "photo_log", payload: {}, media: [dataUrl], confidence: "observed" };
+      const event = { id: uid("evt"), timestamp: new Date().toISOString(), garden_id: activeGardenId, entity_type: "planting", entity_id: plantingId, category: "observation", source: "self", event_type: "photo_log", payload: {}, media: [dataUrl], confidence: "observed" };
       const next = [...events, event];
       setEvents(next); await persist(null, next);
     } catch (err) { console.error(err); }
@@ -482,7 +527,7 @@ CURRENT WEATHER
 ${weatherSummary}`;
 
       const apiMessages = nextMessages.map((m) => ({ role: m.role, content: m.text }));
-      const res = await apiChat(GARDEN_ID, apiMessages, context);
+      const res = await apiChat(activeGardenId, apiMessages, context);
       setChatMessages((ms) => [...ms, { role: "assistant", text: res.reply }]);
     } catch (err) {
       setChatMessages((ms) => [...ms, { role: "assistant", text: "Something went wrong reaching the assistant — try again in a moment." }]);
@@ -582,7 +627,7 @@ ${weatherSummary}`;
 
             <div className="sg-recent">
               <h2>Recent log</h2>
-              {[...events].sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp)).slice(0, 8).map((e) => (
+              {[...visibleEvents].sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp)).slice(0, 8).map((e) => (
                 <div key={e.id} className="sg-event-row">
                   <EventIcon type={e.event_type} />
                   <div>
@@ -599,9 +644,17 @@ ${weatherSummary}`;
 
         {tab === "plants" && (
           <section className="sg-panel">
-            <h1></h1>
+            <div className="sg-drafts-head">
+              <h1>My plants</h1>
+              {gardenRecords.length > 0 && (
+                <select aria-label="Filter by garden" value={selectedGardenId} onChange={(e) => selectGarden(e.target.value)}>
+                  <option value="all">All gardens</option>
+                  {gardenRecords.map((record) => <option key={record.id} value={record.id}>{record.name}</option>)}
+                </select>
+              )}
+            </div>
 
-            <div className="sg-garden-overview">
+            {selectedGardenId !== "all" && <div className="sg-garden-overview">
               <div className="sg-garden-row">
                 <input className="sg-garden-name" value={garden?.name || ""} placeholder="Garden name"
                   onChange={(e) => updateGardenLocal({ name: e.target.value })}
@@ -618,9 +671,9 @@ ${weatherSummary}`;
               </div>
               <textarea className="sg-garden-notes" rows={2} placeholder="Notes about the garden - microclimate, common pests, anything gnome should know."
                 value={garden?.notes || ""} onChange={(e) => updateGardenLocal({ notes: e.target.value })} onBlur={() => persistGarden(garden)} />
-            </div>
+            </div>}
 
-            <div className="sg-drafts-head" style={{ marginTop: "26px" }}><h2>Plants</h2><button className="sg-primary sm" onClick={() => setShowAddForm((s) => !s)}><Plus size={14} /> Add planting</button></div>
+            <div className="sg-drafts-head" style={{ marginTop: "26px" }}><h2>{selectedGardenId === "all" ? "All plants" : "Plants"}</h2>{selectedGardenId !== "all" && <button className="sg-primary sm" onClick={() => setShowAddForm((s) => !s)}><Plus size={14} /> Add planting</button>}</div>
 
             {showAddForm && (
               <div className="sg-draft-card">
@@ -667,11 +720,14 @@ ${weatherSummary}`;
             )}
 
             <div className="sg-plant-grid">
-              {plantings.map((p) => {
-                const proj = projectPlanting(p, events);
+              {visiblePlantings.map((p) => {
+                const gardenEvents = selectedGardenId === "all"
+                  ? visibleEvents.filter((event) => event.garden_id === p.garden_id)
+                  : visibleEvents;
+                const proj = projectPlanting(p, gardenEvents);
                 const meta = SPECIES_META[p.species];
-                const container = containers.find((c) => c.id === proj.container_id);
-                const contState = projectContainer(container, events);
+                const container = visibleContainers.find((c) => c.id === proj.container_id);
+                const contState = projectContainer(container, gardenEvents);
                 const coverImage = proj.cover_image || contState?.cover_image;
                 return (
                   <div key={p.id} className="sg-plant-card">

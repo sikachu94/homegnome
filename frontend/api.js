@@ -27,6 +27,15 @@ async function postJSON(path, body) {
   return res.json();
 }
 
+async function getJSON(path) {
+  const res = await fetch(`${BASE}${path}`, { headers: await authHeader() });
+  if (!res.ok) {
+    const detail = await res.text().catch(() => "");
+    throw new Error(`${path} failed (${res.status}): ${detail}`);
+  }
+  return res.json();
+}
+
 /**
  * POST /api/chat (api/chat.py)
  * messages: [{ role: "user" | "assistant", content: string }]
@@ -48,4 +57,8 @@ export function apiChat(gardenId, messages, context) {
  */
 export function apiExtract(gardenId, note) {
   return postJSON("/api/extract", { garden_id: gardenId, note });
+}
+
+export function apiGardens() {
+  return getJSON("/api/gardens");
 }

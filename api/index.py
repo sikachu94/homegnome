@@ -5,6 +5,7 @@ from fastapi.middleware.cors import CORSMiddleware
 
 from .chat import router as chat_router
 from .extract import router as extract_router
+from .gardens import router as gardens_router
 
 app = FastAPI(docs_url="/api/docs", openapi_url="/api/openapi.json")
 
@@ -22,6 +23,7 @@ app.add_middleware(
 
 app.include_router(chat_router)
 app.include_router(extract_router)
+app.include_router(gardens_router)
 
 
 @app.get("/api/health")
