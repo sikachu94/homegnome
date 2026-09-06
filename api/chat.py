@@ -1,20 +1,25 @@
-from typing import Dict, List
+from typing import List, Literal
 
 from fastapi import APIRouter, Depends, HTTPException
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 
 from .deps import CHAT_MODEL, get_current_user, mistral_client, supabase, verify_garden_ownership
 
 router = APIRouter()
 
 
+class ChatMessage(BaseModel):
+    role: Literal["user", "assistant"]
+    content: str = Field(min_length=1, max_length=4000)
+
+
 class ChatRequest(BaseModel):
     garden_id: str
-    messages: List[Dict[str, str]]  # [{"role": "user", "content": "..."}, ...]
+    messages: List[ChatMessage] = Field(min_length=1, max_length=50)
     # Optional client-computed context (per-plant projections, species reference
     # data, live weather). The backend has no independent access to weather —
     # it only exists in the browser — so the frontend supplies it here.
-    context: str | None = None
+    context: str | None = Field(default=None, max_length=20000)
 
 
 @router.post("/api/chat")
@@ -42,11 +47,8 @@ def garden_chat(req: ChatRequest, user_id: str = Depends(get_current_user)):
 
     # 2. Format history for Mistral (OpenAI-style role/content dicts)
     mistral_messages = [{"role": "system", "content": system_prompt}]
-    for m in req.messages:
-        role = m.get("role", "user")
-        mistral_messages.append(
-            {"role": "assistant" if role == "assistant" else "user", "content": m.get("content", "")}
-        )
+    for message in req.messages:
+        mistral_messages.append(message.model_dump())
 
     # 3. Generate response
     try:
@@ -54,8 +56,8 @@ def garden_chat(req: ChatRequest, user_id: str = Depends(get_current_user)):
             model=CHAT_MODEL,
             messages=mistral_messages,
         )
-    except Exception as exc:
-        raise HTTPException(status_code=502, detail=f"Mistral request failed: {exc}")
+    except Exception:
+        raise HTTPException(status_code=502, detail="Assistant provider is unavailable")
 
     reply = response.choices[0].message.content
     return {"reply": reply}

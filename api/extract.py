@@ -30,7 +30,7 @@ class EventDraftList(BaseModel):
 
 
 class ExtractRequest(BaseModel):
-    note: str
+    note: str = Field(min_length=1, max_length=10000)
     garden_id: str
 
 
@@ -71,8 +71,8 @@ If nothing matches a known planting or event type, return {{"drafts": []}}."""
             ],
             response_format={"type": "json_object"},
         )
-    except Exception as exc:
-        raise HTTPException(status_code=502, detail=f"Mistral request failed: {exc}")
+    except Exception:
+        raise HTTPException(status_code=502, detail="Extraction provider is unavailable")
 
     raw = response.choices[0].message.content
 

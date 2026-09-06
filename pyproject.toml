@@ -8,12 +8,18 @@ authors = [
 ]
 requires-python = ">=3.12"
 dependencies = [
-    "fastapi==0.110.0",
+    "fastapi==0.115.6",
     "pydantic==2.11.7",
     "supabase==2.31.0",
     "mistralai==2.9.4",
     "python-dotenv==1.0.1",
     "uvicorn==0.29.0",
+    "httpx==0.28.1",
+]
+
+[dependency-groups]
+dev = [
+    "pytest==8.3.5",
 ]
 
 [project.scripts]
@@ -25,3 +31,7 @@ entrypoint = "api.index:app"
 [build-system]
 requires = ["uv_build>=0.12.10,<0.13.0"]
 build-backend = "uv_build"
+
+[tool.pytest.ini_options]
+pythonpath = ["."]
+testpaths = ["tests"]
