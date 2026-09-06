@@ -782,6 +782,117 @@ body,
   line-height: 1.5;
 }
 
+/* ---------- Reminders: gentle nudges, not alarms ---------- */
+.sg-reminders-section {
+  margin-top: 24px;
+}
+
+.sg-reminders {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.sg-reminder-card {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  background: var(--panel);
+  border: 1px solid var(--line);
+  border-radius: 11px;
+  padding: 12px 14px;
+}
+
+.sg-reminder-water {
+  border-left: 3px solid #4B8BBF;
+}
+
+.sg-reminder-harvest {
+  border-left: 3px solid var(--gold);
+}
+
+.sg-reminder-issue {
+  border-left: 3px solid var(--clay);
+}
+
+.sg-reminder-icon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  background: var(--canvas);
+  flex-shrink: 0;
+}
+
+.sg-reminder-water .sg-reminder-icon { color: #4B8BBF; }
+.sg-reminder-harvest .sg-reminder-icon { color: var(--gold); }
+.sg-reminder-issue .sg-reminder-icon { color: var(--clay); }
+
+.sg-reminder-body {
+  flex: 1;
+  min-width: 0;
+}
+
+.sg-reminder-title {
+  font-size: 13.5px;
+  font-weight: 600;
+  color: var(--ink);
+}
+
+.sg-reminder-detail {
+  font-size: 12px;
+  color: var(--muted);
+  margin-top: 1px;
+  line-height: 1.4;
+}
+
+.sg-reminders-done {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  background: var(--panel);
+  border: 1px solid var(--line);
+  border-radius: 11px;
+  padding: 12px 14px;
+  color: var(--muted);
+  font-size: 13px;
+}
+
+.sg-reminders-done svg {
+  color: var(--moss);
+}
+
+/* ---------- Advanced toggle in the add-plant form ---------- */
+.sg-advanced-toggle {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  background: none;
+  border: none;
+  cursor: pointer;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--moss);
+  padding: 4px 0;
+  font-family: 'Inter', sans-serif;
+}
+
+.sg-advanced-toggle:hover {
+  color: var(--moss-dark);
+}
+
+.sg-advanced-section {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 10px 12px;
+  background: var(--canvas);
+  border-radius: 9px;
+  border: 1px solid var(--line);
+}
+
 /* ---------- Chat: correspondence, not a support widget ---------- */
 .sg-chat-panel {
   display: flex;

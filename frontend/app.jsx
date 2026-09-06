@@ -1,5 +1,5 @@
 import React, { useState } from "react";
-import { Sprout, NotebookPen, MessageCircle, RotateCcw, MapPin, CloudRain, Thermometer, Loader2 } from "lucide-react";
+import { Sprout, NotebookPen, MessageCircle, RotateCcw, MapPin, CloudRain, Thermometer, Loader as Loader2 } from "lucide-react";
 import gnomeLogo from "./assets/gnome_only.jpg";
 import "./styles.css";
 import { useGardenData } from "./hooks/useGardenData.js";
@@ -124,7 +124,8 @@ export default function App() {
         <div hidden={tab !== "plants"}>
           <PlantsTab
             garden={garden} plantings={plantings} containers={containers} events={events}
-            addPlanting={addPlanting} addPlantingPhoto={addPlantingPhoto}
+            addPlanting={addPlanting} addPlantingPhoto={addPlantingPhoto} addEvent={addEvent}
+            weather={weather}
             updateGardenLocal={updateGardenLocal} updateGardenAndPersist={updateGardenAndPersist}
             persistGarden={persistGarden} showToast={showToast}
           />

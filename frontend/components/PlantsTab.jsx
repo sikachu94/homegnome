@@ -1,9 +1,11 @@
 import { useState } from "react";
-import { Plus, X, ImagePlus } from "lucide-react";
-import { PHENOPHASES, ACQUISITION, CONTAINER_TYPES, CONTAINER_MATERIALS, GARDEN_TYPES, SPECIES_META } from "../lib/species.js";
+import { Plus, X, ImagePlus, ChevronDown, ChevronUp } from "lucide-react";
+import { PHENOPHASES, PHENOPHASE_LABELS, ACQUISITION, ACQUISITION_LABELS, CONTAINER_TYPES, CONTAINER_TYPE_LABELS, CONTAINER_MATERIALS, GARDEN_TYPES, GARDEN_TYPE_LABELS, SPECIES_META } from "../lib/species.js";
 import { uid, fmtDate } from "../lib/format.js";
 import { fileToDataUrl } from "../lib/imageUtils.js";
 import { PlantCard } from "./PlantCard.jsx";
+import { Reminders } from "./Reminders.jsx";
+import { buildReminders } from "../lib/reminders.js";
 
 const blankSoilRow = () => ({ id: uid("soil"), component: "", percent: 0 });
 const blankNewPlanting = () => ({
@@ -13,8 +15,9 @@ const blankNewPlanting = () => ({
   photo: null,
 });
 
-export function PlantsTab({ garden, plantings, containers, events, addPlanting, addPlantingPhoto, updateGardenLocal, updateGardenAndPersist, persistGarden }) {
+export function PlantsTab({ garden, plantings, containers, events, addPlanting, addPlantingPhoto, addEvent, weather, updateGardenLocal, updateGardenAndPersist, persistGarden }) {
   const [showAddForm, setShowAddForm] = useState(false);
+  const [showAdvanced, setShowAdvanced] = useState(false);
   const [newPlanting, setNewPlanting] = useState(blankNewPlanting());
 
   const handleNewPlantingPhoto = async (file) => {
@@ -32,8 +35,22 @@ export function PlantsTab({ garden, plantings, containers, events, addPlanting, 
     if (newPlanting.containerMode === "existing" && !newPlanting.containerId) return;
     await addPlanting(newPlanting);
     setNewPlanting(blankNewPlanting());
+    setShowAdvanced(false);
     setShowAddForm(false);
   };
+
+  const handleLogWatering = async (plantingId) => {
+    if (!addEvent) return;
+    try {
+      await addEvent({
+        id: uid("evt"), timestamp: new Date().toISOString(), garden_id: garden?.id,
+        entity_type: "planting", entity_id: plantingId, category: "action", source: "self",
+        event_type: "watering", payload: {}, confidence: "observed",
+      });
+    } catch (err) { console.error(err); }
+  };
+
+  const reminders = buildReminders(plantings, events, weather);
 
   return (
     <section className="sg-panel">
@@ -45,71 +62,55 @@ export function PlantsTab({ garden, plantings, containers, events, addPlanting, 
             onChange={(e) => updateGardenLocal({ name: e.target.value })}
             onBlur={() => persistGarden(garden)} />
           <select value={garden?.type || "balcony"} onChange={(e) => updateGardenAndPersist({ type: e.target.value })}>
-            {GARDEN_TYPES.map((t) => <option key={t} value={t}>{t.replace("_", " ")}</option>)}
+            {GARDEN_TYPES.map((t) => <option key={t} value={t}>{GARDEN_TYPE_LABELS[t]}</option>)}
           </select>
         </div>
         <div className="sg-garden-stats">
-          <div><span>Plantings</span><strong>{plantings.length}</strong></div>
+          <div><span>Plants</span><strong>{plantings.length}</strong></div>
           <div><span>Containers</span><strong>{containers.length}</strong></div>
           <div><span>Tracking since</span><strong>{garden?.established_at ? fmtDate(garden.established_at) : "—"}</strong></div>
           <div><span>Location</span><strong>{garden?.label || "Not set"}</strong></div>
         </div>
-        <textarea className="sg-garden-notes" rows={2} placeholder="Notes about the garden - microclimate, common pests, anything gnome should know."
+        <textarea className="sg-garden-notes" rows={2} placeholder="Notes about the garden — microclimate, common pests, anything gnome should know."
           value={garden?.notes || ""} onChange={(e) => updateGardenLocal({ notes: e.target.value })} onBlur={() => persistGarden(garden)} />
       </div>
+
+      {plantings.length > 0 && (
+        <div className="sg-reminders-section">
+          <h2>Needs attention</h2>
+          <Reminders reminders={reminders} onLogWatering={handleLogWatering} />
+        </div>
+      )}
 
       <div className="sg-drafts-head" style={{ marginTop: "26px" }}><h2>Plants</h2><button className="sg-primary sm" onClick={() => setShowAddForm((s) => !s)}><Plus size={14} /> Add plant</button></div>
 
       {showAddForm && (
         <div className="sg-draft-card">
-          <input placeholder="Nickname, e.g. Balcony tomato" value={newPlanting.nickname} onChange={(e) => setNewPlanting((n) => ({ ...n, nickname: e.target.value }))} />
+          <input placeholder="What did you name it? e.g. Balcony tomato" value={newPlanting.nickname} onChange={(e) => setNewPlanting((n) => ({ ...n, nickname: e.target.value }))} />
           <div className="sg-draft-row">
             <select value={newPlanting.species} onChange={(e) => setNewPlanting((n) => ({ ...n, species: e.target.value }))}>{Object.keys(SPECIES_META).map((s) => <option key={s} value={s}>{s}</option>)}</select>
-            <select value={newPlanting.entry_stage} onChange={(e) => setNewPlanting((n) => ({ ...n, entry_stage: e.target.value }))}>{PHENOPHASES.map((p) => <option key={p} value={p}>{p}</option>)}</select>
-            <select value={newPlanting.acquisition_source} onChange={(e) => setNewPlanting((n) => ({ ...n, acquisition_source: e.target.value }))}>{ACQUISITION.map((a) => <option key={a} value={a}>{a.replace("_", " ")}</option>)}</select>
           </div>
 
-          <div className="sg-form-label">Container</div>
           <div className="sg-draft-row">
             <select value={newPlanting.containerMode} onChange={(e) => setNewPlanting((n) => ({ ...n, containerMode: e.target.value, containerId: e.target.value === "existing" ? (n.containerId || containers[0]?.id || "") : "" }))}>
-              <option value="new">Create new container</option>
-              <option value="existing" disabled={containers.length === 0}>Use existing container</option>
+              <option value="new">New container</option>
+              <option value="existing" disabled={containers.length === 0}>Existing container</option>
             </select>
-          </div>
-          {newPlanting.containerMode === "existing" ? (
-            <div className="sg-draft-row">
+            {newPlanting.containerMode === "existing" && (
               <select value={newPlanting.containerId} onChange={(e) => setNewPlanting((n) => ({ ...n, containerId: e.target.value }))}>
-                <option value="">Select a container</option>
-                {containers.map((container) => <option key={container.id} value={container.id}>{container.name}</option>)}
+                <option value="">Pick a container</option>
+                {containers.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}
               </select>
+            )}
+          </div>
+
+          {newPlanting.containerMode === "new" && (
+            <div className="sg-draft-row">
+              <select value={newPlanting.containerType} onChange={(e) => setNewPlanting((n) => ({ ...n, containerType: e.target.value }))}>{CONTAINER_TYPES.map((t) => <option key={t} value={t}>{CONTAINER_TYPE_LABELS[t]}</option>)}</select>
+              <select value={newPlanting.material} onChange={(e) => setNewPlanting((n) => ({ ...n, material: e.target.value }))}>{CONTAINER_MATERIALS.map((m) => <option key={m} value={m}>{m}</option>)}</select>
             </div>
-          ) : (
-            <>
-              <div className="sg-draft-row">
-                <select value={newPlanting.containerType} onChange={(e) => setNewPlanting((n) => ({ ...n, containerType: e.target.value }))}>{CONTAINER_TYPES.map((t) => <option key={t} value={t}>{t.replace("_", " ")}</option>)}</select>
-                <select value={newPlanting.material} onChange={(e) => setNewPlanting((n) => ({ ...n, material: e.target.value }))}>{CONTAINER_MATERIALS.map((m) => <option key={m} value={m}>{m}</option>)}</select>
-                <input type="number" min="0" step="0.5" placeholder="Size (liters)" value={newPlanting.containerSize} onChange={(e) => setNewPlanting((n) => ({ ...n, containerSize: e.target.value }))} style={{ maxWidth: "130px" }} />
-              </div>
-              <div className="sg-draft-row">
-                <input placeholder="Placement, e.g. south balcony rail" value={newPlanting.placement} onChange={(e) => setNewPlanting((n) => ({ ...n, placement: e.target.value }))} />
-              </div>
-            </>
           )}
 
-          <div className="sg-form-label">Soil composition</div>
-          {newPlanting.soilComposition.map((row) => (
-            <div className="sg-draft-row" key={row.id}>
-              <input placeholder="Component, e.g. potting mix" value={row.component} onChange={(e) => updateSoilRow(row.id, { component: e.target.value })} />
-              <input type="number" min="0" max="100" placeholder="%" value={row.percent} onChange={(e) => updateSoilRow(row.id, { percent: e.target.value })} style={{ maxWidth: "70px" }} />
-              {newPlanting.soilComposition.length > 1 && <button className="sg-icon-btn" onClick={() => removeSoilRow(row.id)}><X size={14} /></button>}
-            </div>
-          ))}
-          <div className="sg-draft-row">
-            <button className="sg-secondary sm" onClick={addSoilRow}><Plus size={12} /> Add component</button>
-            <span className={`sg-soil-total ${soilTotal !== 100 ? "warn" : ""}`}>{soilTotal}% total</span>
-          </div>
-
-          <div className="sg-form-label">Photo</div>
           <div className="sg-draft-row">
             {newPlanting.photo ? (
               <div className="sg-photo-thumb"><img src={newPlanting.photo} alt="new planting" /><button onClick={() => setNewPlanting((n) => ({ ...n, photo: null }))}><X size={10} /></button></div>
@@ -117,7 +118,51 @@ export function PlantsTab({ garden, plantings, containers, events, addPlanting, 
               <label className="sg-photo-add wide"><ImagePlus size={13} /> Add a photo (optional)<input type="file" accept="image/*" hidden onChange={(e) => handleNewPlantingPhoto(e.target.files?.[0])} /></label>
             )}
           </div>
-          <button className="sg-primary sm" onClick={handleCreatePlanting}>Create planting</button>
+
+          <button className="sg-advanced-toggle" onClick={() => setShowAdvanced((s) => !s)}>
+            {showAdvanced ? <ChevronUp size={14} /> : <ChevronDown size={14} />} Advanced details
+          </button>
+
+          {showAdvanced && (
+            <div className="sg-advanced-section">
+              <div className="sg-form-label">Growth stage</div>
+              <div className="sg-draft-row">
+                <select value={newPlanting.entry_stage} onChange={(e) => setNewPlanting((n) => ({ ...n, entry_stage: e.target.value }))}>{PHENOPHASES.map((p) => <option key={p} value={p}>{PHENOPHASE_LABELS[p]}</option>)}</select>
+              </div>
+
+              <div className="sg-form-label">Where did you get it?</div>
+              <div className="sg-draft-row">
+                <select value={newPlanting.acquisition_source} onChange={(e) => setNewPlanting((n) => ({ ...n, acquisition_source: e.target.value }))}>{ACQUISITION.map((a) => <option key={a} value={a}>{ACQUISITION_LABELS[a]}</option>)}</select>
+              </div>
+
+              {newPlanting.containerMode === "new" && (
+                <>
+                  <div className="sg-form-label">Placement</div>
+                  <div className="sg-draft-row">
+                    <input placeholder="e.g. south balcony rail" value={newPlanting.placement} onChange={(e) => setNewPlanting((n) => ({ ...n, placement: e.target.value }))} />
+                  </div>
+                  <div className="sg-draft-row">
+                    <input type="number" min="0" step="0.5" placeholder="Size (liters)" value={newPlanting.containerSize} onChange={(e) => setNewPlanting((n) => ({ ...n, containerSize: e.target.value }))} style={{ maxWidth: "130px" }} />
+                  </div>
+
+                  <div className="sg-form-label">Soil composition</div>
+                  {newPlanting.soilComposition.map((row) => (
+                    <div className="sg-draft-row" key={row.id}>
+                      <input placeholder="Component, e.g. potting mix" value={row.component} onChange={(e) => updateSoilRow(row.id, { component: e.target.value })} />
+                      <input type="number" min="0" max="100" placeholder="%" value={row.percent} onChange={(e) => updateSoilRow(row.id, { percent: e.target.value })} style={{ maxWidth: "70px" }} />
+                      {newPlanting.soilComposition.length > 1 && <button className="sg-icon-btn" onClick={() => removeSoilRow(row.id)}><X size={14} /></button>}
+                    </div>
+                  ))}
+                  <div className="sg-draft-row">
+                    <button className="sg-secondary sm" onClick={addSoilRow}><Plus size={12} /> Add component</button>
+                    <span className={`sg-soil-total ${soilTotal !== 100 ? "warn" : ""}`}>{soilTotal}% total</span>
+                  </div>
+                </>
+              )}
+            </div>
+          )}
+
+          <button className="sg-primary sm" onClick={handleCreatePlanting}>Add to garden</button>
         </div>
       )}
 

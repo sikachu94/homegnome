@@ -1,7 +1,8 @@
-import { Box, Layers, MapPin, Bug, ImagePlus, Sprout, Apple, Leaf, Carrot, Flower2, Wheat } from "lucide-react";
+import { Box, Layers, MapPin, Bug, ImagePlus, Sprout, Apple, Leaf, Carrot, Flower2, Wheat, CircleCheck as CheckCircle2 } from "lucide-react";
 import { SPECIES_META } from "../lib/species.js";
 import { projectPlanting, projectContainer } from "../lib/projections.js";
 import { fmtDate, formatComposition } from "../lib/format.js";
+import { friendlyStage } from "../lib/reminders.js";
 
 const HARVEST_ICON = { fruit: Apple, leaf: Leaf, root: Carrot, flower_bud: Flower2, seed_grain: Wheat, ornamental_flower: Flower2, ornamental_foliage: Leaf };
 
@@ -16,6 +17,8 @@ export function PlantCard({ planting, events, containers, addPlantingPhoto }) {
   const container = containers.find((c) => c.id === proj.container_id);
   const contState = projectContainer(container, events);
   const coverImage = proj.cover_image || contState?.cover_image;
+  const isReady = meta && proj.stage === meta.target_stage && proj.status === "active";
+  const isBolting = meta?.flowering_signal === "decline_warning" && proj.stage === "flowering" && proj.status === "active";
 
   return (
     <div className="sg-plant-card">
@@ -25,7 +28,13 @@ export function PlantCard({ planting, events, containers, addPlantingPhoto }) {
       </div>
       <div className="sg-plant-head">
         <div><div className="sg-plant-name">{planting.nickname}</div><div className="sg-plant-species">{planting.species}</div></div>
-        <span className={`sg-stage ${proj.status === "ended" ? "ended" : ""}`}>{proj.stage}</span>
+        {isReady ? (
+          <span className="sg-stage ready"><CheckCircle2 size={11} /> Ready</span>
+        ) : isBolting ? (
+          <span className="sg-stage ready">Harvest soon</span>
+        ) : (
+          <span className={`sg-stage ${proj.status === "ended" ? "ended" : ""}`}>{friendlyStage(proj.stage)}</span>
+        )}
       </div>
       <div className="sg-plant-stats">
         <div><span>Age</span><strong>{proj.days_since_entry}d</strong></div>
