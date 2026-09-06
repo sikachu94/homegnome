@@ -3,7 +3,7 @@ from typing import List, Literal
 from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel, Field
 
-from .deps import CHAT_MODEL, get_current_user, mistral_client, supabase, verify_garden_ownership
+from .deps import CHAT_MODEL, get_current_user, get_db, mistral_client, verify_garden_ownership
 
 router = APIRouter()
 
@@ -23,12 +23,12 @@ class ChatRequest(BaseModel):
 
 
 @router.post("/api/chat")
-def garden_chat(req: ChatRequest, user_id: str = Depends(get_current_user)):
-    verify_garden_ownership(req.garden_id, user_id)
+def garden_chat(req: ChatRequest, user_id: str = Depends(get_current_user), db = Depends(get_db)):
+    verify_garden_ownership(db, req.garden_id, user_id)
 
     # 1. Fetch recent events from Supabase (source of truth, always fresh)
     events = (
-        supabase.table("garden_events")
+        db.table("garden_events")
         .select("*")
         .eq("garden_id", req.garden_id)
         .order("timestamp", desc=True)

@@ -4,7 +4,7 @@ from typing import Any, Dict, List, Optional
 from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel, Field, ValidationError
 
-from .deps import EXTRACT_MODEL, get_current_user, mistral_client, supabase, verify_garden_ownership
+from .deps import EXTRACT_MODEL, get_current_user, get_db, mistral_client, verify_garden_ownership
 
 router = APIRouter()
 
@@ -35,12 +35,12 @@ class ExtractRequest(BaseModel):
 
 
 @router.post("/api/extract")
-def extract_events(req: ExtractRequest, user_id: str = Depends(get_current_user)):
-    verify_garden_ownership(req.garden_id, user_id)
+def extract_events(req: ExtractRequest, user_id: str = Depends(get_current_user), db = Depends(get_db)):
+    verify_garden_ownership(db, req.garden_id, user_id)
 
     # 1. Fetch this garden's active plantings to give the model as context
     plantings_res = (
-        supabase.table("plantings")
+        db.table("plantings")
         .select("id, nickname, species")
         .eq("garden_id", req.garden_id)
         .execute()

@@ -66,8 +66,8 @@ def test_gardens_endpoint_returns_owned_gardens_with_related_data(monkeypatch):
         def table(self, table):
             return FakeQuery(table)
 
-    monkeypatch.setattr(gardens_api, "supabase", FakeSupabase())
     app.dependency_overrides[gardens_api.get_current_user] = lambda: "user-1"
+    app.dependency_overrides[gardens_api.get_db] = lambda: FakeSupabase()
     try:
         response = client.get("/api/gardens")
     finally:
@@ -98,11 +98,13 @@ def test_current_user_forwards_bearer_token_to_database_client(monkeypatch):
         def auth(self, token):
             self.token = token
 
-    postgrest = FakePostgrest()
-    monkeypatch.setattr(deps, "supabase", type("Client", (), {"auth": FakeAuth(), "postgrest": postgrest})())
-
+    monkeypatch.setattr(deps, "_auth_client", type("Client", (), {"auth": FakeAuth()})())
     assert deps.get_current_user("Bearer access-token") == "user-1"
-    assert postgrest.token == "access-token"
+
+    postgrest = FakePostgrest()
+    monkeypatch.setattr(deps, "create_client", lambda _url, _key: type("Client", (), {"postgrest": postgrest})())
+    db = deps.get_db("Bearer access-token")
+    assert db.postgrest.token == "access-token"
 
 
 def test_create_planting_persists_container_planting_and_setup_events(monkeypatch):
@@ -139,9 +141,8 @@ def test_create_planting_persists_container_planting_and_setup_events(monkeypatc
             return FakeQuery(table)
 
     fake_supabase = FakeSupabase()
-    monkeypatch.setattr(writes_api, "supabase", fake_supabase)
-    monkeypatch.setattr(deps, "supabase", fake_supabase)
     app.dependency_overrides[writes_api.get_current_user] = lambda: "user-1"
+    app.dependency_overrides[writes_api.get_db] = lambda: fake_supabase
     try:
         response = client.post(
             "/api/gardens/garden-1/plantings",
@@ -183,9 +184,8 @@ def test_append_event_rejects_entity_outside_owned_garden(monkeypatch):
             return FakeQuery()
 
     fake_supabase = FakeSupabase()
-    monkeypatch.setattr(writes_api, "supabase", fake_supabase)
-    monkeypatch.setattr(deps, "supabase", fake_supabase)
     app.dependency_overrides[writes_api.get_current_user] = lambda: "user-1"
+    app.dependency_overrides[writes_api.get_db] = lambda: fake_supabase
     try:
         response = client.post(
             "/api/gardens/garden-1/events",
@@ -202,6 +202,70 @@ def test_append_event_rejects_entity_outside_owned_garden(monkeypatch):
         app.dependency_overrides.clear()
 
     assert response.status_code == 404
+
+
+def test_append_event_persists_event_for_owned_entity(monkeypatch):
+    class FakeQuery:
+        def __init__(self, table):
+            self.table = table
+            self.filters = {}
+            self.rows = []
+
+        def select(self, _columns):
+            return self
+
+        def eq(self, column, value):
+            self.filters[column] = value
+            return self
+
+        def limit(self, _value):
+            return self
+
+        def insert(self, rows):
+            self.rows = rows
+            return self
+
+        def execute(self):
+            if self.table == "gardens":
+                return type("Result", (), {"data": [{"id": "garden-1"}]})()
+            if self.table == "plantings":
+                return type("Result", (), {"data": [{"id": "planting-1"}]})()
+            row = {**self.rows[0], "id": "event-1"}
+            return type("Result", (), {"data": [row]})()
+
+    class FakeSupabase:
+        def table(self, table):
+            return FakeQuery(table)
+
+    fake_supabase = FakeSupabase()
+    app.dependency_overrides[writes_api.get_current_user] = lambda: "user-1"
+    app.dependency_overrides[writes_api.get_db] = lambda: fake_supabase
+    try:
+        response = client.post(
+            "/api/gardens/garden-1/events",
+            json={
+                "entity_type": "planting",
+                "entity_id": "planting-1",
+                "event_type": "watering",
+                "category": "action",
+                "source": "self",
+                "payload": {"amount_l": 1},
+            },
+        )
+    finally:
+        app.dependency_overrides.clear()
+
+    assert response.status_code == 201
+    assert response.json()["event"] == {
+        "entity_type": "planting",
+        "entity_id": "planting-1",
+        "event_type": "watering",
+        "category": "action",
+        "source": "self",
+        "payload": {"amount_l": 1},
+        "garden_id": "garden-1",
+        "id": "event-1",
+    }
 
 
 def test_update_garden_persists_allowed_metadata(monkeypatch):
@@ -230,9 +294,8 @@ def test_update_garden_persists_allowed_metadata(monkeypatch):
             return FakeQuery()
 
     fake_supabase = FakeSupabase()
-    monkeypatch.setattr(writes_api, "supabase", fake_supabase)
-    monkeypatch.setattr(deps, "supabase", fake_supabase)
     app.dependency_overrides[writes_api.get_current_user] = lambda: "user-1"
+    app.dependency_overrides[writes_api.get_db] = lambda: fake_supabase
     try:
         response = client.patch(
             "/api/gardens/garden-1",
