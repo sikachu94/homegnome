@@ -27,6 +27,29 @@ async function postJSON(path, body) {
   return res.json();
 }
 
+async function patchJSON(path, body) {
+  const headers = { "Content-Type": "application/json", ...(await authHeader()) };
+  const res = await fetch(`${BASE}${path}`, {
+    method: "PATCH",
+    headers,
+    body: JSON.stringify(body),
+  });
+  if (!res.ok) {
+    const detail = await res.text().catch(() => "");
+    throw new Error(`${path} failed (${res.status}): ${detail}`);
+  }
+  return res.json();
+}
+
+async function getJSON(path) {
+  const res = await fetch(`${BASE}${path}`, { headers: await authHeader() });
+  if (!res.ok) {
+    const detail = await res.text().catch(() => "");
+    throw new Error(`${path} failed (${res.status}): ${detail}`);
+  }
+  return res.json();
+}
+
 /**
  * POST /api/chat (api/chat.py)
  * messages: [{ role: "user" | "assistant", content: string }]
@@ -48,4 +71,20 @@ export function apiChat(gardenId, messages, context) {
  */
 export function apiExtract(gardenId, note) {
   return postJSON("/api/extract", { garden_id: gardenId, note });
+}
+
+export function apiGardens() {
+  return getJSON("/api/gardens");
+}
+
+export function apiCreatePlanting(gardenId, records) {
+  return postJSON(`/api/gardens/${gardenId}/plantings`, records);
+}
+
+export function apiCreateEvent(gardenId, event) {
+  return postJSON(`/api/gardens/${gardenId}/events`, event);
+}
+
+export function apiUpdateGarden(gardenId, patch) {
+  return patchJSON(`/api/gardens/${gardenId}`, patch);
 }

@@ -37,7 +37,7 @@ def garden_chat(req: ChatRequest, user_id: str = Depends(get_current_user)):
     )
 
     system_prompt = (
-        "You are homeGnome, a home gardening assistant. "
+        "You are myGnomie, a home gardening assistant. "
         "Answer using the gardener's data below. Be concise, warm, and practical. "
         "If the data doesn't have enough information to answer confidently, say so plainly instead of guessing.\n\n"
     )

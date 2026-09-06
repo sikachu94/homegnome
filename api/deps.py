@@ -48,6 +48,7 @@ def get_current_user(authorization: str = Header(...)) -> str:
     if not user_response or not user_response.user:
         raise HTTPException(status_code=401, detail="Invalid token")
 
+    supabase.postgrest.auth(token)
     return user_response.user.id
 
 

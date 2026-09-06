@@ -48,7 +48,7 @@ def extract_events(req: ExtractRequest, user_id: str = Depends(get_current_user)
     plantings_context = "\n".join(f"{p['id']} | {p['nickname']} | {p['species']}" for p in plantings_res.data)
 
     schema = EventDraftList.model_json_schema()
-    system_instruction = f"""You convert a home gardener's freeform note into structured event-log entries for homeGnome, a garden tracker.
+    system_instruction = f"""You convert a home gardener's freeform note into structured event-log entries for myGnomie, a garden tracker.
 
 Known plantings (id | nickname | species):
 {plantings_context}
