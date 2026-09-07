@@ -758,9 +758,17 @@ body,
   display: block;
 }
 
-.sg-calendar-dot.watering { background: var(--moss); }
-.sg-calendar-dot.harvest { background: var(--clay); }
-.sg-calendar-dot.completed { opacity: 0.35; }
+.sg-calendar-dot.watering {
+  background: var(--moss);
+}
+
+.sg-calendar-dot.harvest {
+  background: var(--clay);
+}
+
+.sg-calendar-dot.completed {
+  opacity: 0.35;
+}
 
 .sg-calendar-event-count {
   color: var(--muted);
@@ -803,8 +811,15 @@ body,
   flex-shrink: 0;
 }
 
-.sg-calendar-task-icon.watering { background: #E4EFE5; color: var(--moss-dark); }
-.sg-calendar-task-icon.harvest { background: var(--clay-soft); color: var(--clay); }
+.sg-calendar-task-icon.watering {
+  background: #E4EFE5;
+  color: var(--moss-dark);
+}
+
+.sg-calendar-task-icon.harvest {
+  background: var(--clay-soft);
+  color: var(--clay);
+}
 
 .sg-calendar-task-body {
   display: flex;
@@ -849,17 +864,49 @@ body,
   font-size: 12.5px;
 }
 
-.sg-calendar-event span { color: var(--muted); }
-.sg-calendar-event strong { color: var(--ink); }
-.sg-calendar-empty { color: var(--muted); font-size: 13px; margin: 16px 0 4px; }
+.sg-calendar-event span {
+  color: var(--muted);
+}
+
+.sg-calendar-event strong {
+  color: var(--ink);
+}
+
+.sg-calendar-empty {
+  color: var(--muted);
+  font-size: 13px;
+  margin: 16px 0 4px;
+}
 
 @media (max-width: 560px) {
-  .sg-calendar-toolbar { align-items: flex-start; flex-direction: column; }
-  .sg-calendar-nav { align-self: stretch; justify-content: space-between; }
-  .sg-calendar-day { min-height: 62px; padding: 5px 2px; }
-  .sg-calendar-task { align-items: flex-start; }
-  .sg-calendar-task-actions { flex-wrap: wrap; justify-content: flex-end; }
-  .sg-calendar-task-actions .sg-secondary.sm { min-height: 32px; padding: 6px 9px; }
+  .sg-calendar-toolbar {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+
+  .sg-calendar-nav {
+    align-self: stretch;
+    justify-content: space-between;
+  }
+
+  .sg-calendar-day {
+    min-height: 62px;
+    padding: 5px 2px;
+  }
+
+  .sg-calendar-task {
+    align-items: flex-start;
+  }
+
+  .sg-calendar-task-actions {
+    flex-wrap: wrap;
+    justify-content: flex-end;
+  }
+
+  .sg-calendar-task-actions .sg-secondary.sm {
+    min-height: 32px;
+    padding: 6px 9px;
+  }
 }
 
 /* ---------- Plant cards: each one a small labeled specimen, not a SaaS tile ---------- */
@@ -1064,9 +1111,17 @@ body,
   flex-shrink: 0;
 }
 
-.sg-reminder-water .sg-reminder-icon { color: #4B8BBF; }
-.sg-reminder-harvest .sg-reminder-icon { color: var(--gold); }
-.sg-reminder-issue .sg-reminder-icon { color: var(--clay); }
+.sg-reminder-water .sg-reminder-icon {
+  color: #4B8BBF;
+}
+
+.sg-reminder-harvest .sg-reminder-icon {
+  color: var(--gold);
+}
+
+.sg-reminder-issue .sg-reminder-icon {
+  color: var(--clay);
+}
 
 .sg-reminder-body {
   flex: 1;
