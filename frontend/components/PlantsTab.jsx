@@ -6,6 +6,7 @@ import { fileToDataUrl } from "../lib/imageUtils.js";
 import { PlantCard } from "./PlantCard.jsx";
 import { Reminders } from "./Reminders.jsx";
 import { buildReminders } from "../lib/reminders.js";
+import { GardenCalendar } from "./GardenCalendar.jsx";
 
 const blankSoilRow = () => ({ id: uid("soil"), component: "", percent: 0 });
 const blankNewPlanting = () => ({
@@ -15,9 +16,10 @@ const blankNewPlanting = () => ({
   photo: null,
 });
 
-export function PlantsTab({ garden, plantings, containers, events, addPlanting, addPlantingPhoto, addEvent, weather, updateGardenLocal, updateGardenAndPersist, persistGarden }) {
+export function PlantsTab({ garden, plantings, containers, events, calendarTasks, addPlanting, addPlantingPhoto, addEvent, weather, updateGardenLocal, updateGardenAndPersist, persistGarden, updateCalendarTask, completeCalendarTask }) {
   const [showAddForm, setShowAddForm] = useState(false);
   const [showAdvanced, setShowAdvanced] = useState(false);
+  const [gardenView, setGardenView] = useState("plants");
   const [newPlanting, setNewPlanting] = useState(blankNewPlanting());
 
   const handleNewPlantingPhoto = async (file) => {
@@ -82,9 +84,22 @@ export function PlantsTab({ garden, plantings, containers, events, addPlanting, 
         </div>
       )}
 
-      <div className="sg-drafts-head" style={{ marginTop: "26px" }}><h2>Plants</h2><button className="sg-primary sm" onClick={() => setShowAddForm((s) => !s)}><Plus size={14} /> Add plant</button></div>
+      <div className="sg-drafts-head sg-garden-view-head" style={{ marginTop: "26px" }}>
+        <div className="sg-segmented" role="tablist" aria-label="Garden view">
+          <button className={gardenView === "plants" ? "active" : ""} onClick={() => setGardenView("plants")} role="tab" aria-selected={gardenView === "plants"}>Plants</button>
+          <button className={gardenView === "calendar" ? "active" : ""} onClick={() => setGardenView("calendar")} role="tab" aria-selected={gardenView === "calendar"}>Calendar</button>
+        </div>
+        {gardenView === "plants" && <button className="sg-primary sm" onClick={() => setShowAddForm((s) => !s)}><Plus size={14} /> Add plant</button>}
+      </div>
 
-      {showAddForm && (
+      {gardenView === "calendar" && (
+        <GardenCalendar
+          plantings={plantings} events={events} calendarTasks={calendarTasks}
+          onUpdateTask={updateCalendarTask} onCompleteTask={completeCalendarTask}
+        />
+      )}
+
+      {gardenView === "plants" && showAddForm && (
         <div className="sg-draft-card">
           <input placeholder="What did you name it? e.g. Balcony tomato" value={newPlanting.nickname} onChange={(e) => setNewPlanting((n) => ({ ...n, nickname: e.target.value }))} />
           <div className="sg-draft-row">
@@ -166,11 +181,11 @@ export function PlantsTab({ garden, plantings, containers, events, addPlanting, 
         </div>
       )}
 
-      <div className="sg-plant-grid">
+      {gardenView === "plants" && <div className="sg-plant-grid">
         {plantings.map((p) => (
           <PlantCard key={p.id} planting={p} events={events} containers={containers} addPlantingPhoto={addPlantingPhoto} />
         ))}
-      </div>
+      </div>}
     </section>
   );
 }

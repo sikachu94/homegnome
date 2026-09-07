@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback } from "react";
-import { storageSet } from "../lib/storage.js";
+import { storageGet, storageSet } from "../lib/storage.js";
 import { uid } from "../lib/format.js";
 import { fileToDataUrl } from "../lib/imageUtils.js";
 import { GARDEN_ID, DEFAULT_GARDEN } from "../lib/seedData.js";
@@ -14,6 +14,7 @@ export function useGardenData() {
   const [plantings, setPlantings] = useState(null);
   const [containers, setContainers] = useState(null);
   const [events, setEvents] = useState(null);
+  const [calendarTasks, setCalendarTasks] = useState([]);
   const [garden, setGarden] = useState(null);
   const [gardenId, setGardenId] = useState(GARDEN_ID);
   const [loaded, setLoaded] = useState(false);
@@ -38,6 +39,8 @@ export function useGardenData() {
     setPlantings(data.plantings || []);
     setContainers(data.containers || []);
     setEvents(data.events || []);
+    const storedTasks = await storageGet("calendarTasks");
+    setCalendarTasks(storedTasks ? JSON.parse(storedTasks.value) : []);
     await persist(data.plantings || [], data.events || [], data.containers || []);
     await persistGarden(nextGarden);
   }, [persist, persistGarden]);
@@ -93,6 +96,27 @@ export function useGardenData() {
     if (remoteGarden) await applyGarden(remoteGarden);
     else setEvents((prev) => [...prev, ...created.map(({ event }) => event)]);
   }, [applyGarden, gardenId]);
+
+  const updateCalendarTask = useCallback(async (task) => {
+    setCalendarTasks((previous) => {
+      const next = previous.some((item) => item.id === task.id)
+        ? previous.map((item) => (item.id === task.id ? task : item))
+        : [...previous, task];
+      storageSet("calendarTasks", JSON.stringify(next));
+      return next;
+    });
+  }, []);
+
+  const completeCalendarTask = useCallback(async (task) => {
+    if (task.type === "watering") {
+      await addEvent({
+        id: uid("evt"), timestamp: new Date().toISOString(), garden_id: gardenId,
+        entity_type: "planting", entity_id: task.planting_id, category: "action", source: "self",
+        event_type: "watering", payload: {}, confidence: "observed",
+      });
+    }
+    await updateCalendarTask({ ...task, status: "completed" });
+  }, [addEvent, gardenId, updateCalendarTask]);
 
   const addPlanting = useCallback(async (form) => {
     if (!form.nickname.trim()) return;
@@ -158,8 +182,9 @@ export function useGardenData() {
   }, [applyGarden, gardenId]);
 
   return {
-    loaded, loadError, plantings, containers, events, garden, gardenId,
+    loaded, loadError, plantings, containers, events, calendarTasks, garden, gardenId,
     addEvent, addPlanting, addPlantingPhoto,
+    updateCalendarTask, completeCalendarTask,
     updateGardenLocal, updateGardenAndPersist, persistGarden,
     resetDemo,
     refresh,

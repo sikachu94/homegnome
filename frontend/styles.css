@@ -624,6 +624,244 @@ body,
   color: var(--muted);
 }
 
+.sg-garden-view-head {
+  align-items: center;
+}
+
+.sg-segmented {
+  display: inline-flex;
+  gap: 3px;
+  padding: 3px;
+  background: var(--canvas);
+  border: 1px solid var(--line);
+  border-radius: 9px;
+}
+
+.sg-segmented button {
+  border: none;
+  border-radius: 6px;
+  background: transparent;
+  color: var(--muted);
+  padding: 7px 13px;
+  font: 600 12.5px 'Inter', sans-serif;
+  cursor: pointer;
+}
+
+.sg-segmented button.active {
+  background: var(--panel);
+  color: var(--ink);
+  box-shadow: 0 1px 2px rgba(31, 42, 34, 0.12);
+}
+
+.sg-calendar {
+  margin-top: 4px;
+}
+
+.sg-calendar-toolbar,
+.sg-calendar-agenda-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.sg-calendar-toolbar h2 {
+  margin-bottom: 3px;
+}
+
+.sg-calendar-caption {
+  color: var(--muted);
+  font-size: 12px;
+  margin: 0;
+}
+
+.sg-calendar-nav {
+  display: flex;
+  align-items: center;
+  gap: 3px;
+  color: var(--moss-dark);
+  font-size: 13px;
+  white-space: nowrap;
+}
+
+.sg-calendar-nav .sg-icon-btn,
+.sg-calendar-task-actions .sg-icon-btn {
+  min-width: 34px;
+  min-height: 34px;
+}
+
+.sg-calendar-weekdays,
+.sg-calendar-grid {
+  display: grid;
+  grid-template-columns: repeat(7, minmax(0, 1fr));
+}
+
+.sg-calendar-weekdays {
+  margin-top: 16px;
+  color: var(--muted);
+  font-size: 10px;
+  font-weight: 600;
+  text-align: center;
+  text-transform: uppercase;
+}
+
+.sg-calendar-day {
+  min-height: 74px;
+  border: 1px solid var(--line);
+  border-width: 1px 1px 0 0;
+  background: var(--panel);
+  padding: 8px 6px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 5px;
+  cursor: pointer;
+  color: var(--ink);
+}
+
+.sg-calendar-day:nth-child(7n + 1) {
+  border-left-width: 1px;
+}
+
+.sg-calendar-day:nth-last-child(-n + 7) {
+  border-bottom-width: 1px;
+}
+
+.sg-calendar-day:hover,
+.sg-calendar-day.selected {
+  background: var(--gold-soft);
+}
+
+.sg-calendar-day.outside {
+  color: #A2A69C;
+  background: #FAF9F3;
+}
+
+.sg-calendar-day.today .sg-calendar-day-number {
+  background: var(--moss);
+  color: #fff;
+  border-radius: 50%;
+}
+
+.sg-calendar-day-number {
+  width: 25px;
+  height: 25px;
+  display: grid;
+  place-items: center;
+  font-size: 12px;
+}
+
+.sg-calendar-dot {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  display: block;
+}
+
+.sg-calendar-dot.watering { background: var(--moss); }
+.sg-calendar-dot.harvest { background: var(--clay); }
+.sg-calendar-dot.completed { opacity: 0.35; }
+
+.sg-calendar-event-count {
+  color: var(--muted);
+  font-size: 9px;
+  white-space: nowrap;
+}
+
+.sg-calendar-agenda {
+  margin-top: 18px;
+  border-top: 1px solid var(--line);
+  padding-top: 14px;
+}
+
+.sg-calendar-agenda-head h3 {
+  font-family: 'Fraunces', serif;
+  font-size: 17px;
+  margin: 0;
+}
+
+.sg-calendar-agenda-head span {
+  color: var(--muted);
+  font-size: 12px;
+}
+
+.sg-calendar-task,
+.sg-calendar-event {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 11px 0;
+  border-bottom: 1px solid var(--line);
+}
+
+.sg-calendar-task-icon {
+  width: 30px;
+  height: 30px;
+  border-radius: 8px;
+  display: grid;
+  place-items: center;
+  flex-shrink: 0;
+}
+
+.sg-calendar-task-icon.watering { background: #E4EFE5; color: var(--moss-dark); }
+.sg-calendar-task-icon.harvest { background: var(--clay-soft); color: var(--clay); }
+
+.sg-calendar-task-body {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+
+.sg-calendar-task-body strong {
+  font-size: 13px;
+  font-weight: 600;
+}
+
+.sg-calendar-task-body span {
+  color: var(--muted);
+  font-size: 11.5px;
+}
+
+.sg-calendar-task.completed .sg-calendar-task-body,
+.sg-calendar-task.skipped .sg-calendar-task-body {
+  opacity: 0.55;
+}
+
+.sg-calendar-task-actions {
+  margin-left: auto;
+  display: flex;
+  align-items: center;
+  gap: 2px;
+}
+
+.sg-calendar-date input {
+  width: 34px;
+  height: 32px;
+  border: 1px solid var(--line);
+  border-radius: 7px;
+  color: transparent;
+  cursor: pointer;
+}
+
+.sg-calendar-event {
+  color: var(--moss-dark);
+  font-size: 12.5px;
+}
+
+.sg-calendar-event span { color: var(--muted); }
+.sg-calendar-event strong { color: var(--ink); }
+.sg-calendar-empty { color: var(--muted); font-size: 13px; margin: 16px 0 4px; }
+
+@media (max-width: 560px) {
+  .sg-calendar-toolbar { align-items: flex-start; flex-direction: column; }
+  .sg-calendar-nav { align-self: stretch; justify-content: space-between; }
+  .sg-calendar-day { min-height: 62px; padding: 5px 2px; }
+  .sg-calendar-task { align-items: flex-start; }
+  .sg-calendar-task-actions { flex-wrap: wrap; justify-content: flex-end; }
+  .sg-calendar-task-actions .sg-secondary.sm { min-height: 32px; padding: 6px 9px; }
+}
+
 /* ---------- Plant cards: each one a small labeled specimen, not a SaaS tile ---------- */
 .sg-plant-grid {
   display: grid;

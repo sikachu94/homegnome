@@ -24,8 +24,8 @@ export default function App() {
   const { toast, showToast } = useToast();
 
   const {
-    loaded, loadError, plantings, containers, events, garden, gardenId,
-    addEvent, addPlanting, addPlantingPhoto,
+    loaded, loadError, plantings, containers, events, calendarTasks, garden, gardenId,
+    addEvent, addPlanting, addPlantingPhoto, updateCalendarTask, completeCalendarTask,
     updateGardenLocal, updateGardenAndPersist, persistGarden,
     resetDemo: resetGardenData, refresh: refreshGardenData,
   } = useGardenData();
@@ -123,11 +123,12 @@ export default function App() {
         </div>
         <div hidden={tab !== "plants"}>
           <PlantsTab
-            garden={garden} plantings={plantings} containers={containers} events={events}
+            garden={garden} plantings={plantings} containers={containers} events={events} calendarTasks={calendarTasks}
             addPlanting={addPlanting} addPlantingPhoto={addPlantingPhoto} addEvent={addEvent}
             weather={weather}
             updateGardenLocal={updateGardenLocal} updateGardenAndPersist={updateGardenAndPersist}
-            persistGarden={persistGarden} showToast={showToast}
+            persistGarden={persistGarden} updateCalendarTask={updateCalendarTask} completeCalendarTask={completeCalendarTask}
+            showToast={showToast}
           />
         </div>
         <div hidden={tab !== "chat"}>
