@@ -118,7 +118,7 @@ export default function App() {
         <div hidden={tab !== "capture"}>
           <CaptureTab
             gardenId={gardenId} plantings={plantings} containers={containers} events={events}
-            addEvent={addEvent} resetSignal={resetKey} showToast={showToast}
+            addEvent={addEvent} resetSignal={resetKey} showToast={showToast} weather={weather}
           />
         </div>
         <div hidden={tab !== "plants"}>

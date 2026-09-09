@@ -1,9 +1,10 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Plus, X, ImagePlus, ChevronDown, ChevronUp } from "lucide-react";
 import { PHENOPHASES, PHENOPHASE_LABELS, ACQUISITION, ACQUISITION_LABELS, CONTAINER_TYPES, CONTAINER_TYPE_LABELS, CONTAINER_MATERIALS, GARDEN_TYPES, GARDEN_TYPE_LABELS, SPECIES_META } from "../lib/species.js";
 import { uid, fmtDate } from "../lib/format.js";
 import { fileToDataUrl } from "../lib/imageUtils.js";
 import { PlantCard } from "./PlantCard.jsx";
+import { PlantDetail } from "./PlantDetail.jsx";
 import { Reminders } from "./Reminders.jsx";
 import { buildReminders } from "../lib/reminders.js";
 
@@ -15,10 +16,17 @@ const blankNewPlanting = () => ({
   photo: null,
 });
 
-export function PlantsTab({ garden, plantings, containers, events, addPlanting, addPlantingPhoto, addEvent, weather, updateGardenLocal, updateGardenAndPersist, persistGarden }) {
+export function PlantsTab({ garden, plantings, containers, events, addPlanting, addPlantingPhoto, addEvent, weather, updateGardenLocal, updateGardenAndPersist, persistGarden, showToast }) {
   const [showAddForm, setShowAddForm] = useState(false);
   const [showAdvanced, setShowAdvanced] = useState(false);
   const [newPlanting, setNewPlanting] = useState(blankNewPlanting());
+  const [selectedPlantingId, setSelectedPlantingId] = useState(null);
+
+  // Guards against a dead-end detail view if the selected planting is ever
+  // removed out from under it (e.g. after a demo reset).
+  useEffect(() => {
+    if (selectedPlantingId && !plantings.some((p) => p.id === selectedPlantingId)) setSelectedPlantingId(null);
+  }, [selectedPlantingId, plantings]);
 
   const handleNewPlantingPhoto = async (file) => {
     if (!file) return;
@@ -49,6 +57,22 @@ export function PlantsTab({ garden, plantings, containers, events, addPlanting, 
       });
     } catch (err) { console.error(err); }
   };
+
+  const selectedPlanting = plantings.find((p) => p.id === selectedPlantingId);
+  if (selectedPlanting) {
+    return (
+      <PlantDetail
+        planting={selectedPlanting}
+        containers={containers}
+        events={events}
+        garden={garden}
+        addEvent={addEvent}
+        addPlantingPhoto={addPlantingPhoto}
+        showToast={showToast}
+        onBack={() => setSelectedPlantingId(null)}
+      />
+    );
+  }
 
   const reminders = buildReminders(plantings, events, weather);
 
@@ -168,7 +192,7 @@ export function PlantsTab({ garden, plantings, containers, events, addPlanting, 
 
       <div className="sg-plant-grid">
         {plantings.map((p) => (
-          <PlantCard key={p.id} planting={p} events={events} containers={containers} addPlantingPhoto={addPlantingPhoto} />
+          <PlantCard key={p.id} planting={p} events={events} containers={containers} addPlantingPhoto={addPlantingPhoto} onOpen={() => setSelectedPlantingId(p.id)} />
         ))}
       </div>
     </section>

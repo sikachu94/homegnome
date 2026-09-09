@@ -33,3 +33,20 @@ npm run dev
 ```bash
 uv run --group dev pytest
 ```
+
+### TODO: FEAUTURES and IMPROVEMENTS
+
+- [ ] Calendar Tab
+- [ ] Event Log Design overhaul
+- [ ] Better AI agent system prompt
+    - [ ] simpler language
+    - [ ] shorter reply
+    - [ ] targeted answers
+- [ ] landing page
+- [ ] Auth and user rls
+- [ ] login page
+- [ ] External Reference data
+    - [ ] plant species
+    - [ ] pests & diseases
+    - [ ] regions
+- [ ] Plant drill down/zoom in
