@@ -1,26 +1,85 @@
 import { useState, useRef, useEffect } from "react";
-import { Mic, Square, Sparkles, Loader2, X, Camera } from "lucide-react";
+import { Mic, Square, Sparkles, Loader2, X, Camera, Droplets, Scissors, ChevronDown } from "lucide-react";
 import { apiExtract } from "../api.js";
-import { scopeOf, buildEvent, labelForEntity, labelForEventType } from "../lib/events.js";
+import { scopeOf, buildEvent, labelForEntity, labelForEventType, quickLogEvent } from "../lib/events.js";
 import { uid, fmtTime, groupByDay } from "../lib/format.js";
 import { fileToDataUrl } from "../lib/imageUtils.js";
 import { EventIcon } from "./EventIcon.jsx";
+import { pickPriorityPlanting } from "../lib/reminders.js";
 
-export function CaptureTab({ gardenId, plantings, containers, events, addEvent, resetSignal, showToast }) {
+const ISSUE_TYPES = new Set(["pest_sighting", "disease_sighting"]);
+// How many of the most recent events to consider when building the day
+// groups below — high enough that the "collapse older days" behavior has
+// something real to collapse, without loading the whole history.
+const RECENT_EVENT_WINDOW = 25;
+
+export function CaptureTab({ gardenId, plantings, containers, events, addEvent, resetSignal, showToast, weather }) {
   const [note, setNote] = useState("");
+  const [noteExpanded, setNoteExpanded] = useState(false);
   const [listening, setListening] = useState(false);
   const [extracting, setExtracting] = useState(false);
   const [drafts, setDrafts] = useState([]);
   const [extractError, setExtractError] = useState(null);
   const [savingDraftId, setSavingDraftId] = useState(null);
   const [savingAll, setSavingAll] = useState(false);
+  const [quickBusy, setQuickBusy] = useState(null);
   const recognitionRef = useRef(null);
+  const photoInputRef = useRef(null);
 
   const notify = (message, kind = "success") => showToast?.(message, kind);
 
-  // Demo reset only clears drafts (matching the original scope) — the
-  // in-progress note text is left alone, same as before.
-  useEffect(() => { setDrafts([]); }, [resetSignal]);
+  const sortedEvents = [...events].sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp)).slice(0, RECENT_EVENT_WINDOW);
+  const dayGroups = groupByDay(sortedEvents);
+
+  // Today + yesterday (the first two day-groups at mount) start open; older
+  // days start collapsed into a summary row — see the plan's Phase 3 notes
+  // on treating the log as a scan, not a wall of rows.
+  const [expandedDays, setExpandedDays] = useState(() => new Set(dayGroups.slice(0, 2).map((g) => g.label)));
+
+  // Demo reset only clears drafts and collapses back to the default state —
+  // the in-progress note text is left alone, same as before.
+  useEffect(() => {
+    setDrafts([]);
+    setNoteExpanded(false);
+    setExpandedDays(new Set(dayGroups.slice(0, 2).map((g) => g.label)));
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [resetSignal]);
+
+  const toggleDay = (label) => setExpandedDays((prev) => {
+    const next = new Set(prev);
+    if (next.has(label)) next.delete(label); else next.add(label);
+    return next;
+  });
+  const dayHasAlert = (group) => group.items.some((e) => ISSUE_TYPES.has(e.event_type));
+
+  const priorityPlanting = plantings.length ? pickPriorityPlanting(plantings, events, weather) : null;
+
+  const runQuickAction = async (eventType) => {
+    if (!priorityPlanting) return;
+    setQuickBusy(eventType);
+    try {
+      await addEvent(quickLogEvent(eventType, priorityPlanting.id, gardenId));
+      notify(`${labelForEventType(eventType)} — ${priorityPlanting.nickname}.`);
+    } catch (err) {
+      notify("Couldn't save that — try again.", "error");
+    } finally {
+      setQuickBusy(null);
+    }
+  };
+
+  const handleQuickPhoto = async (file) => {
+    if (!file || !priorityPlanting) return;
+    setQuickBusy("photo_log");
+    try {
+      const dataUrl = await fileToDataUrl(file);
+      await addEvent(quickLogEvent("photo_log", priorityPlanting.id, gardenId, { media: [dataUrl] }));
+      notify(`Photo added — ${priorityPlanting.nickname}.`);
+    } catch (err) {
+      notify("Couldn't attach that photo — try again.", "error");
+    } finally {
+      setQuickBusy(null);
+    }
+  };
 
   const speechSupported = typeof window !== "undefined" && (window.SpeechRecognition || window.webkitSpeechRecognition);
   const toggleListening = () => {
@@ -114,27 +173,49 @@ export function CaptureTab({ gardenId, plantings, containers, events, addEvent, 
     }
   };
 
-  const dayGroups = groupByDay([...events].sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp)).slice(0, 12));
-
   return (
     <section className="sg-panel">
       <h1>What's happening in the garden?</h1>
-      <p className="sg-sub">Describe it in your own words. We'll turn it into log entries you can check before saving.</p>
+      <p className="sg-sub">Water, snap a photo, or log a harvest in one tap — or describe anything else below.</p>
 
-      <div className="sg-capture-box">
-        <textarea value={note} onChange={(e) => setNote(e.target.value)} placeholder="e.g. Watered the balcony tomato, and I think the basil has some aphids on the underside of the leaves" rows={4} />
-        <div className="sg-capture-actions">
-          {speechSupported && (
-            <button className={`sg-mic ${listening ? "on" : ""}`} onClick={toggleListening}>
-              {listening ? <Square size={14} /> : <Mic size={14} />} {listening ? "Stop" : "Speak instead"}
+      {plantings.length > 0 && (
+        <>
+          <div className="sg-quick-actions">
+            <button className="sg-quick-btn primary" disabled={quickBusy !== null || !priorityPlanting} onClick={() => runQuickAction("watering")}>
+              {quickBusy === "watering" ? <Loader2 className="spin" size={18} /> : <Droplets size={18} />} Water
             </button>
-          )}
-          <button className="sg-primary" disabled={!note.trim() || extracting} onClick={runExtraction}>
-            {extracting ? <Loader2 className="spin" size={14} /> : <Sparkles size={14} />} Find events in this note
-          </button>
+            <button className="sg-quick-btn" disabled={quickBusy !== null || !priorityPlanting} onClick={() => photoInputRef.current?.click()}>
+              {quickBusy === "photo_log" ? <Loader2 className="spin" size={18} /> : <Camera size={18} />} Photo
+            </button>
+            <input ref={photoInputRef} type="file" accept="image/*" hidden onChange={(e) => { handleQuickPhoto(e.target.files?.[0]); e.target.value = ""; }} />
+            <button className="sg-quick-btn" disabled={quickBusy !== null || !priorityPlanting} onClick={() => runQuickAction("harvest")}>
+              {quickBusy === "harvest" ? <Loader2 className="spin" size={18} /> : <Scissors size={18} />} Harvest
+            </button>
+          </div>
+          {priorityPlanting && <p className="sg-quick-hint">Water targets {priorityPlanting.nickname} — whichever plant needs it most right now. Logging for someone else? Open their card in Garden instead.</p>}
+        </>
+      )}
+
+      {!noteExpanded ? (
+        <button className="sg-note-toggle" onClick={() => setNoteExpanded(true)}>
+          <Sparkles size={14} /> Describe something else…
+        </button>
+      ) : (
+        <div className="sg-capture-box">
+          <textarea value={note} onChange={(e) => setNote(e.target.value)} placeholder="e.g. Watered the balcony tomato, and I think the basil has some aphids on the underside of the leaves" rows={4} autoFocus />
+          <div className="sg-capture-actions">
+            {speechSupported && (
+              <button className={`sg-mic ${listening ? "on" : ""}`} onClick={toggleListening}>
+                {listening ? <Square size={14} /> : <Mic size={14} />} {listening ? "Stop" : "Speak instead"}
+              </button>
+            )}
+            <button className="sg-primary" disabled={!note.trim() || extracting} onClick={runExtraction}>
+              {extracting ? <Loader2 className="spin" size={14} /> : <Sparkles size={14} />} Find events in this note
+            </button>
+          </div>
+          {extractError && <div className="sg-error">{extractError}</div>}
         </div>
-        {extractError && <div className="sg-error">{extractError}</div>}
-      </div>
+      )}
 
       {drafts.length > 0 && (
         <div className="sg-drafts">
@@ -181,23 +262,37 @@ export function CaptureTab({ gardenId, plantings, containers, events, addEvent, 
       <div className="sg-recent">
         <h2>Recent activity</h2>
         {dayGroups.length === 0 ? (
-          <div className="sg-empty">Nothing logged yet. Write a note above to get started.</div>
+          <div className="sg-empty">Nothing logged yet. Try a quick action above, or write a note.</div>
         ) : (
-          dayGroups.map((group) => (
-            <div key={group.label} className="sg-day-group">
-              <div className="sg-day-label">{group.label}</div>
-              {group.items.map((e) => (
-                <div key={e.id} className="sg-event-row">
-                  <EventIcon type={e.event_type} />
-                  <div>
-                    <div className="sg-event-title">{labelForEntity(e, plantings, containers)} · {labelForEventType(e.event_type)}</div>
-                    <div className="sg-event-meta">{fmtTime(e.timestamp)}{e.note ? ` — "${e.note}"` : ""}</div>
-                  </div>
-                  {e.media?.length ? <img className="sg-event-thumb" src={e.media[0]} alt="" /> : null}
-                </div>
-              ))}
-            </div>
-          ))
+          dayGroups.map((group) => {
+            const isOpen = expandedDays.has(group.label);
+            const alert = dayHasAlert(group);
+            return (
+              <div key={group.label} className="sg-day-group">
+                {isOpen ? (
+                  <button className="sg-day-label" onClick={() => toggleDay(group.label)} aria-expanded="true">{group.label}</button>
+                ) : (
+                  <button className={`sg-day-toggle ${alert ? "alert" : ""}`} onClick={() => toggleDay(group.label)} aria-expanded="false">
+                    <span>{group.label} · {group.items.length} {group.items.length === 1 ? "entry" : "entries"}{alert ? " · needs attention" : ""}</span>
+                    <ChevronDown size={14} />
+                  </button>
+                )}
+                {isOpen && group.items.map((e) => {
+                  const isAlert = ISSUE_TYPES.has(e.event_type);
+                  return (
+                    <div key={e.id} className={`sg-event-row ${isAlert ? "alert" : ""}`}>
+                      <EventIcon type={e.event_type} />
+                      <div>
+                        <div className="sg-event-title">{labelForEntity(e, plantings, containers)} · {labelForEventType(e.event_type)}</div>
+                        <div className="sg-event-meta">{fmtTime(e.timestamp)}{e.note ? ` — "${e.note}"` : ""}</div>
+                      </div>
+                      {e.media?.length ? <img className="sg-event-thumb" src={e.media[0]} alt="" /> : null}
+                    </div>
+                  );
+                })}
+              </div>
+            );
+          })
         )}
       </div>
       <p className="sg-footnote">Saved entries can't be edited yet — add a new one if something needs correcting.</p>

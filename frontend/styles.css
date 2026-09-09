@@ -624,291 +624,6 @@ body,
   color: var(--muted);
 }
 
-.sg-garden-view-head {
-  align-items: center;
-}
-
-.sg-segmented {
-  display: inline-flex;
-  gap: 3px;
-  padding: 3px;
-  background: var(--canvas);
-  border: 1px solid var(--line);
-  border-radius: 9px;
-}
-
-.sg-segmented button {
-  border: none;
-  border-radius: 6px;
-  background: transparent;
-  color: var(--muted);
-  padding: 7px 13px;
-  font: 600 12.5px 'Inter', sans-serif;
-  cursor: pointer;
-}
-
-.sg-segmented button.active {
-  background: var(--panel);
-  color: var(--ink);
-  box-shadow: 0 1px 2px rgba(31, 42, 34, 0.12);
-}
-
-.sg-calendar {
-  margin-top: 4px;
-}
-
-.sg-calendar-toolbar,
-.sg-calendar-agenda-head {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 12px;
-}
-
-.sg-calendar-toolbar h2 {
-  margin-bottom: 3px;
-}
-
-.sg-calendar-caption {
-  color: var(--muted);
-  font-size: 12px;
-  margin: 0;
-}
-
-.sg-calendar-nav {
-  display: flex;
-  align-items: center;
-  gap: 3px;
-  color: var(--moss-dark);
-  font-size: 13px;
-  white-space: nowrap;
-}
-
-.sg-calendar-nav .sg-icon-btn,
-.sg-calendar-task-actions .sg-icon-btn {
-  min-width: 34px;
-  min-height: 34px;
-}
-
-.sg-calendar-weekdays,
-.sg-calendar-grid {
-  display: grid;
-  grid-template-columns: repeat(7, minmax(0, 1fr));
-}
-
-.sg-calendar-weekdays {
-  margin-top: 16px;
-  color: var(--muted);
-  font-size: 10px;
-  font-weight: 600;
-  text-align: center;
-  text-transform: uppercase;
-}
-
-.sg-calendar-day {
-  min-height: 74px;
-  border: 1px solid var(--line);
-  border-width: 1px 1px 0 0;
-  background: var(--panel);
-  padding: 8px 6px;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 5px;
-  cursor: pointer;
-  color: var(--ink);
-}
-
-.sg-calendar-day:nth-child(7n + 1) {
-  border-left-width: 1px;
-}
-
-.sg-calendar-day:nth-last-child(-n + 7) {
-  border-bottom-width: 1px;
-}
-
-.sg-calendar-day:hover,
-.sg-calendar-day.selected {
-  background: var(--gold-soft);
-}
-
-.sg-calendar-day.outside {
-  color: #A2A69C;
-  background: #FAF9F3;
-}
-
-.sg-calendar-day.today .sg-calendar-day-number {
-  background: var(--moss);
-  color: #fff;
-  border-radius: 50%;
-}
-
-.sg-calendar-day-number {
-  width: 25px;
-  height: 25px;
-  display: grid;
-  place-items: center;
-  font-size: 12px;
-}
-
-.sg-calendar-dot {
-  width: 7px;
-  height: 7px;
-  border-radius: 50%;
-  display: block;
-}
-
-.sg-calendar-dot.watering {
-  background: var(--moss);
-}
-
-.sg-calendar-dot.harvest {
-  background: var(--clay);
-}
-
-.sg-calendar-dot.completed {
-  opacity: 0.35;
-}
-
-.sg-calendar-event-count {
-  color: var(--muted);
-  font-size: 9px;
-  white-space: nowrap;
-}
-
-.sg-calendar-agenda {
-  margin-top: 18px;
-  border-top: 1px solid var(--line);
-  padding-top: 14px;
-}
-
-.sg-calendar-agenda-head h3 {
-  font-family: 'Fraunces', serif;
-  font-size: 17px;
-  margin: 0;
-}
-
-.sg-calendar-agenda-head span {
-  color: var(--muted);
-  font-size: 12px;
-}
-
-.sg-calendar-task,
-.sg-calendar-event {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  padding: 11px 0;
-  border-bottom: 1px solid var(--line);
-}
-
-.sg-calendar-task-icon {
-  width: 30px;
-  height: 30px;
-  border-radius: 8px;
-  display: grid;
-  place-items: center;
-  flex-shrink: 0;
-}
-
-.sg-calendar-task-icon.watering {
-  background: #E4EFE5;
-  color: var(--moss-dark);
-}
-
-.sg-calendar-task-icon.harvest {
-  background: var(--clay-soft);
-  color: var(--clay);
-}
-
-.sg-calendar-task-body {
-  display: flex;
-  flex-direction: column;
-  gap: 2px;
-  min-width: 0;
-}
-
-.sg-calendar-task-body strong {
-  font-size: 13px;
-  font-weight: 600;
-}
-
-.sg-calendar-task-body span {
-  color: var(--muted);
-  font-size: 11.5px;
-}
-
-.sg-calendar-task.completed .sg-calendar-task-body,
-.sg-calendar-task.skipped .sg-calendar-task-body {
-  opacity: 0.55;
-}
-
-.sg-calendar-task-actions {
-  margin-left: auto;
-  display: flex;
-  align-items: center;
-  gap: 2px;
-}
-
-.sg-calendar-date input {
-  width: 34px;
-  height: 32px;
-  border: 1px solid var(--line);
-  border-radius: 7px;
-  color: transparent;
-  cursor: pointer;
-}
-
-.sg-calendar-event {
-  color: var(--moss-dark);
-  font-size: 12.5px;
-}
-
-.sg-calendar-event span {
-  color: var(--muted);
-}
-
-.sg-calendar-event strong {
-  color: var(--ink);
-}
-
-.sg-calendar-empty {
-  color: var(--muted);
-  font-size: 13px;
-  margin: 16px 0 4px;
-}
-
-@media (max-width: 560px) {
-  .sg-calendar-toolbar {
-    align-items: flex-start;
-    flex-direction: column;
-  }
-
-  .sg-calendar-nav {
-    align-self: stretch;
-    justify-content: space-between;
-  }
-
-  .sg-calendar-day {
-    min-height: 62px;
-    padding: 5px 2px;
-  }
-
-  .sg-calendar-task {
-    align-items: flex-start;
-  }
-
-  .sg-calendar-task-actions {
-    flex-wrap: wrap;
-    justify-content: flex-end;
-  }
-
-  .sg-calendar-task-actions .sg-secondary.sm {
-    min-height: 32px;
-    padding: 6px 9px;
-  }
-}
-
 /* ---------- Plant cards: each one a small labeled specimen, not a SaaS tile ---------- */
 .sg-plant-grid {
   display: grid;
@@ -925,6 +640,7 @@ body,
   flex-direction: column;
   gap: 11px;
   padding-bottom: 15px;
+  cursor: pointer;
 }
 
 .sg-cover {
@@ -1111,17 +827,9 @@ body,
   flex-shrink: 0;
 }
 
-.sg-reminder-water .sg-reminder-icon {
-  color: #4B8BBF;
-}
-
-.sg-reminder-harvest .sg-reminder-icon {
-  color: var(--gold);
-}
-
-.sg-reminder-issue .sg-reminder-icon {
-  color: var(--clay);
-}
+.sg-reminder-water .sg-reminder-icon { color: #4B8BBF; }
+.sg-reminder-harvest .sg-reminder-icon { color: var(--gold); }
+.sg-reminder-issue .sg-reminder-icon { color: var(--clay); }
 
 .sg-reminder-body {
   flex: 1;
@@ -1293,5 +1001,183 @@ body,
 
 .sg-bottom-nav button.active {
   color: var(--moss-dark);
+  font-weight: 600;
+}
+
+/* ==========================================================================
+   Event log overhaul (Kaizen redesign) — quick actions, collapsed note
+   capture, day-grouped/andon-style log, and the plant "zoom in" detail page.
+   ========================================================================== */
+
+/* ---------- One-tap quick actions: Log tab (unscoped) + Plant detail (scoped) ---------- */
+.sg-quick-actions {
+  display: flex;
+  gap: 8px;
+  margin-bottom: 6px;
+}
+
+.sg-quick-btn {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+  border: 1px solid var(--line);
+  background: var(--panel);
+  border-radius: 12px;
+  padding: 12px 8px;
+  cursor: pointer;
+  font-family: 'Inter', sans-serif;
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--ink);
+  min-height: 64px;
+}
+
+.sg-quick-btn.primary {
+  background: var(--moss);
+  border-color: var(--moss);
+  color: #fff;
+}
+
+.sg-quick-btn:disabled {
+  opacity: 0.5;
+  cursor: default;
+}
+
+.sg-quick-hint {
+  font-size: 11.5px;
+  color: var(--muted);
+  line-height: 1.5;
+  margin: 0 0 18px;
+}
+
+/* ---------- Note capture, demoted to a collapsed affordance for the 20% case ---------- */
+.sg-note-toggle {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  border: 1px dashed var(--line);
+  background: var(--panel);
+  border-radius: 10px;
+  padding: 10px 12px;
+  font-size: 13px;
+  color: var(--muted);
+  cursor: pointer;
+  width: 100%;
+  margin-bottom: 18px;
+  min-height: 44px;
+  font-family: 'Inter', sans-serif;
+}
+
+/* ---------- Day-grouped log: open label, collapsed rollup, andon highlight ---------- */
+.sg-day-group {
+  margin-bottom: 6px;
+}
+
+.sg-day-label {
+  display: block;
+  background: none;
+  border: none;
+  padding: 4px 0 8px;
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--muted);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  text-align: left;
+  cursor: pointer;
+  font-family: 'Inter', sans-serif;
+}
+
+.sg-day-toggle {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  width: 100%;
+  background: var(--panel);
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  padding: 11px 12px;
+  margin-bottom: 8px;
+  cursor: pointer;
+  font-family: 'Inter', sans-serif;
+  font-size: 13px;
+  color: var(--ink);
+}
+
+/* A collapsed day that contains a pest/disease sighting still has to read as
+   an alert — the andon signal must survive collapsing, not just live inside it. */
+.sg-day-toggle.alert {
+  border: none;
+  border-left: 3px solid var(--clay);
+  border-radius: 0 10px 10px 0;
+  background: var(--clay-soft);
+  color: var(--clay);
+  font-weight: 600;
+}
+
+.sg-event-row.alert {
+  background: var(--clay-soft);
+  border-left: 3px solid var(--clay);
+  border-radius: 0 8px 8px 0;
+  padding-left: 8px;
+  margin: 2px 0 2px -1px;
+}
+
+.sg-event-row.alert .sg-event-title {
+  color: var(--clay);
+  font-weight: 600;
+}
+
+/* ---------- Plant detail (zoomed-in single-plant page) ---------- */
+.sg-back-link {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  background: none;
+  border: none;
+  color: var(--muted);
+  font-size: 13px;
+  padding: 4px 0 14px;
+  cursor: pointer;
+  font-family: 'Inter', sans-serif;
+}
+
+.sg-plant-detail-head {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.sg-cover.sm {
+  width: 64px;
+  height: 64px;
+  border-radius: 16px;
+  flex-shrink: 0;
+}
+
+.sg-plant-detail-stats {
+  display: flex;
+  gap: 18px;
+  padding: 12px 0;
+  border-top: 1px solid var(--line);
+  border-bottom: 1px solid var(--line);
+  margin: 14px 0 16px;
+}
+
+.sg-plant-detail-stats div {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.sg-plant-detail-stats span {
+  font-size: 11px;
+  color: var(--muted);
+}
+
+.sg-plant-detail-stats strong {
+  font-size: 14px;
   font-weight: 600;
 }

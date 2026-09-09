@@ -75,6 +75,32 @@ export function buildReminders(plantings, events, weather) {
   return reminders.sort((a, b) => (order[a.kind] ?? 9) - (order[b.kind] ?? 9));
 }
 
+/**
+ * Returns the single planting a one-tap quick action ("Water") should
+ * target: whichever plant buildReminders would flag first (issue > harvest
+ * > water, its existing priority order). If nothing is currently flagged,
+ * falls back to whichever active planting has gone longest without a
+ * watering log — never surfaces an ended planting.
+ */
+export function pickPriorityPlanting(plantings, events, weather) {
+  const reminders = buildReminders(plantings, events, weather);
+  if (reminders.length) {
+    return plantings.find((p) => p.id === reminders[0].planting_id) || null;
+  }
+
+  const active = plantings.filter((p) => projectPlanting(p, events).status === "active");
+  if (!active.length) return null;
+
+  return [...active].sort((a, b) => {
+    const aWatered = projectPlanting(a, events).last_watered_at;
+    const bWatered = projectPlanting(b, events).last_watered_at;
+    if (!aWatered && !bWatered) return 0;
+    if (!aWatered) return -1; // never watered sorts first — most neglected
+    if (!bWatered) return 1;
+    return new Date(aWatered) - new Date(bWatered);
+  })[0];
+}
+
 export function friendlyStage(stage) {
   const labels = {
     seed: "Seed",

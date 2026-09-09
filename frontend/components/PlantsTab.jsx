@@ -1,12 +1,12 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Plus, X, ImagePlus, ChevronDown, ChevronUp } from "lucide-react";
 import { PHENOPHASES, PHENOPHASE_LABELS, ACQUISITION, ACQUISITION_LABELS, CONTAINER_TYPES, CONTAINER_TYPE_LABELS, CONTAINER_MATERIALS, GARDEN_TYPES, GARDEN_TYPE_LABELS, SPECIES_META } from "../lib/species.js";
 import { uid, fmtDate } from "../lib/format.js";
 import { fileToDataUrl } from "../lib/imageUtils.js";
 import { PlantCard } from "./PlantCard.jsx";
+import { PlantDetail } from "./PlantDetail.jsx";
 import { Reminders } from "./Reminders.jsx";
 import { buildReminders } from "../lib/reminders.js";
-import { GardenCalendar } from "./GardenCalendar.jsx";
 
 const blankSoilRow = () => ({ id: uid("soil"), component: "", percent: 0 });
 const blankNewPlanting = () => ({
@@ -16,11 +16,17 @@ const blankNewPlanting = () => ({
   photo: null,
 });
 
-export function PlantsTab({ garden, plantings, containers, events, calendarTasks, addPlanting, addPlantingPhoto, addEvent, weather, updateGardenLocal, updateGardenAndPersist, persistGarden, updateCalendarTask, completeCalendarTask }) {
+export function PlantsTab({ garden, plantings, containers, events, addPlanting, addPlantingPhoto, addEvent, weather, updateGardenLocal, updateGardenAndPersist, persistGarden, showToast }) {
   const [showAddForm, setShowAddForm] = useState(false);
   const [showAdvanced, setShowAdvanced] = useState(false);
-  const [gardenView, setGardenView] = useState("plants");
   const [newPlanting, setNewPlanting] = useState(blankNewPlanting());
+  const [selectedPlantingId, setSelectedPlantingId] = useState(null);
+
+  // Guards against a dead-end detail view if the selected planting is ever
+  // removed out from under it (e.g. after a demo reset).
+  useEffect(() => {
+    if (selectedPlantingId && !plantings.some((p) => p.id === selectedPlantingId)) setSelectedPlantingId(null);
+  }, [selectedPlantingId, plantings]);
 
   const handleNewPlantingPhoto = async (file) => {
     if (!file) return;
@@ -51,6 +57,22 @@ export function PlantsTab({ garden, plantings, containers, events, calendarTasks
       });
     } catch (err) { console.error(err); }
   };
+
+  const selectedPlanting = plantings.find((p) => p.id === selectedPlantingId);
+  if (selectedPlanting) {
+    return (
+      <PlantDetail
+        planting={selectedPlanting}
+        containers={containers}
+        events={events}
+        garden={garden}
+        addEvent={addEvent}
+        addPlantingPhoto={addPlantingPhoto}
+        showToast={showToast}
+        onBack={() => setSelectedPlantingId(null)}
+      />
+    );
+  }
 
   const reminders = buildReminders(plantings, events, weather);
 
@@ -84,22 +106,9 @@ export function PlantsTab({ garden, plantings, containers, events, calendarTasks
         </div>
       )}
 
-      <div className="sg-drafts-head sg-garden-view-head" style={{ marginTop: "26px" }}>
-        <div className="sg-segmented" role="tablist" aria-label="Garden view">
-          <button className={gardenView === "plants" ? "active" : ""} onClick={() => setGardenView("plants")} role="tab" aria-selected={gardenView === "plants"}>Plants</button>
-          <button className={gardenView === "calendar" ? "active" : ""} onClick={() => setGardenView("calendar")} role="tab" aria-selected={gardenView === "calendar"}>Calendar</button>
-        </div>
-        {gardenView === "plants" && <button className="sg-primary sm" onClick={() => setShowAddForm((s) => !s)}><Plus size={14} /> Add plant</button>}
-      </div>
+      <div className="sg-drafts-head" style={{ marginTop: "26px" }}><h2>Plants</h2><button className="sg-primary sm" onClick={() => setShowAddForm((s) => !s)}><Plus size={14} /> Add plant</button></div>
 
-      {gardenView === "calendar" && (
-        <GardenCalendar
-          plantings={plantings} events={events} calendarTasks={calendarTasks}
-          onUpdateTask={updateCalendarTask} onCompleteTask={completeCalendarTask}
-        />
-      )}
-
-      {gardenView === "plants" && showAddForm && (
+      {showAddForm && (
         <div className="sg-draft-card">
           <input placeholder="What did you name it? e.g. Balcony tomato" value={newPlanting.nickname} onChange={(e) => setNewPlanting((n) => ({ ...n, nickname: e.target.value }))} />
           <div className="sg-draft-row">
@@ -181,11 +190,11 @@ export function PlantsTab({ garden, plantings, containers, events, calendarTasks
         </div>
       )}
 
-      {gardenView === "plants" && <div className="sg-plant-grid">
+      <div className="sg-plant-grid">
         {plantings.map((p) => (
-          <PlantCard key={p.id} planting={p} events={events} containers={containers} addPlantingPhoto={addPlantingPhoto} />
+          <PlantCard key={p.id} planting={p} events={events} containers={containers} addPlantingPhoto={addPlantingPhoto} onOpen={() => setSelectedPlantingId(p.id)} />
         ))}
-      </div>}
+      </div>
     </section>
   );
 }

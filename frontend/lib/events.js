@@ -59,6 +59,35 @@ export function buildEvent(draft, gardenId) {
   };
 }
 
+/**
+ * Builds a minimal, ready-to-persist event for one-tap quick actions
+ * (watering, harvest, photo_log) — no note, empty payload by default.
+ * `extra` lets callers attach things buildEvent's draft shape doesn't cover,
+ * e.g. `{ media: [dataUrl] }` for a quick photo, or a payload override.
+ *
+ * Deliberately separate from buildEvent: quick actions always know their
+ * target entity directly (no draft.planting_id / scopeOf inference needed
+ * from free-text extraction), and always start from an empty payload since
+ * there's no note for the AI to have parsed fields out of.
+ */
+export function quickLogEvent(eventType, entityId, gardenId, extra = {}) {
+  const meta = EVENT_TYPES[eventType];
+  const scope = meta?.scope || "planting";
+  return {
+    id: uid("evt"),
+    timestamp: new Date().toISOString(),
+    garden_id: gardenId,
+    entity_type: scope === "garden" ? "garden" : "planting",
+    entity_id: scope === "garden" ? gardenId : entityId,
+    category: meta?.category || "action",
+    source: "self",
+    event_type: eventType,
+    payload: {},
+    confidence: "observed",
+    ...extra,
+  };
+}
+
 /** Human-readable label for an event's subject, for the recent-log list. */
 export function labelForEntity(event, plantings, containers) {
   if (event.entity_type === "garden") return "Weather";

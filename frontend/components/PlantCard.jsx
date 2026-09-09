@@ -6,12 +6,14 @@ import { friendlyStage } from "../lib/reminders.js";
 
 const HARVEST_ICON = { fruit: Apple, leaf: Leaf, root: Carrot, flower_bud: Flower2, seed_grain: Wheat, ornamental_flower: Flower2, ornamental_foliage: Leaf };
 
-function GenericPlantImage({ harvestType, size = 28 }) {
+// Exported so PlantDetail.jsx (the zoomed-in single-plant view) can reuse the
+// same generic cover art instead of re-deriving the harvest-type -> icon map.
+export function GenericPlantImage({ harvestType, size = 28 }) {
   const Icon = HARVEST_ICON[harvestType] || Sprout;
   return <Icon size={size} />;
 }
 
-export function PlantCard({ planting, events, containers, addPlantingPhoto }) {
+export function PlantCard({ planting, events, containers, addPlantingPhoto, onOpen }) {
   const proj = projectPlanting(planting, events);
   const meta = SPECIES_META[planting.species];
   const container = containers.find((c) => c.id === proj.container_id);
@@ -20,11 +22,25 @@ export function PlantCard({ planting, events, containers, addPlantingPhoto }) {
   const isReady = meta && proj.stage === meta.target_stage && proj.status === "active";
   const isBolting = meta?.flowering_signal === "decline_warning" && proj.stage === "flowering" && proj.status === "active";
 
+  const openDetail = () => onOpen?.(planting);
+
   return (
-    <div className="sg-plant-card">
+    <div
+      className="sg-plant-card"
+      role="button"
+      tabIndex={0}
+      onClick={openDetail}
+      onKeyDown={(e) => {
+        if (e.key === "Enter" || e.key === " ") { e.preventDefault(); openDetail(); }
+      }}
+    >
       <div className="sg-cover">
         {coverImage ? <img src={coverImage} alt={planting.nickname} /> : <div className="sg-cover-generic"><GenericPlantImage harvestType={meta?.harvest_type} /></div>}
-        <label className="sg-cover-upload" title="Add a photo"><ImagePlus size={13} /><input type="file" accept="image/*" hidden onChange={(e) => addPlantingPhoto(planting.id, e.target.files?.[0])} /></label>
+        {/* stopPropagation: tapping the upload icon should swap the photo, not open the plant's detail page */}
+        <label className="sg-cover-upload" title="Add a photo" onClick={(e) => e.stopPropagation()}>
+          <ImagePlus size={13} />
+          <input type="file" accept="image/*" hidden onChange={(e) => addPlantingPhoto(planting.id, e.target.files?.[0])} />
+        </label>
       </div>
       <div className="sg-plant-head">
         <div><div className="sg-plant-name">{planting.nickname}</div><div className="sg-plant-species">{planting.species}</div></div>
