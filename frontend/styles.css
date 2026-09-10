@@ -502,39 +502,74 @@ body,
 .sg-event-row {
   display: flex;
   align-items: flex-start;
-  gap: 11px;
-  padding: 11px 0;
-  border-bottom: 1px solid var(--line);
+  gap: 12px;
+  padding: 12px 0;
+  border-bottom: 1px dotted var(--line);
 }
 
 .sg-event-row:last-child {
   border-bottom: none;
 }
 
-.sg-evt-icon {
-  color: var(--moss);
-  margin-top: 2px;
+/* The stamp itself (the colored circle) is rendered by EventIcon.jsx via
+   .sg-stamp / .sg-stamp-{moss,gold,clay} — see components/EventIcon.jsx. */
+.sg-stamp {
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
   flex-shrink: 0;
+  color: #fff;
+}
+
+.sg-stamp-moss { background: var(--moss); }
+.sg-stamp-gold { background: var(--gold); }
+.sg-stamp-clay { background: var(--clay); }
+
+.sg-event-body {
+  flex: 1;
+  min-width: 0;
 }
 
 .sg-event-title {
-  font-size: 13.5px;
-  font-weight: 500;
+  font-family: 'Fraunces', serif;
+  font-size: 14.5px;
+  font-weight: 600;
   color: var(--ink);
 }
 
 .sg-event-meta {
   font-size: 12px;
   color: var(--muted);
+  font-style: italic;
   margin-top: 1px;
 }
 
+.sg-event-note {
+  font-size: 12px;
+  color: var(--muted);
+  font-style: italic;
+  margin-top: 2px;
+}
+
 .sg-event-thumb {
-  width: 34px;
-  height: 34px;
-  border-radius: 7px;
+  width: 40px;
+  height: 40px;
+  border-radius: 8px;
   object-fit: cover;
-  margin-left: auto;
+  border: 1px solid var(--line);
+  margin-top: 6px;
+  display: block;
+}
+
+.sg-event-time {
+  font-size: 10.5px;
+  color: var(--muted);
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  white-space: nowrap;
+  margin-top: 3px;
+  flex-shrink: 0;
 }
 
 .sg-footnote {
@@ -1117,17 +1152,26 @@ body,
   font-weight: 600;
 }
 
+/* Bleeds to the edge of .sg-main's 18px padding so the alert reads as a
+   stamped card, not just a tinted row — matches the .sg-panel context both
+   CaptureTab and PlantDetail render into. */
 .sg-event-row.alert {
   background: var(--clay-soft);
-  border-left: 3px solid var(--clay);
-  border-radius: 0 8px 8px 0;
-  padding-left: 8px;
-  margin: 2px 0 2px -1px;
+  border-bottom: none;
+  border-radius: 10px;
+  margin: 2px -18px;
+  padding: 12px 18px;
+}
+
+.sg-event-row.alert .sg-event-title,
+.sg-event-row.alert .sg-event-meta,
+.sg-event-row.alert .sg-event-note,
+.sg-event-row.alert .sg-event-time {
+  color: var(--clay);
 }
 
 .sg-event-row.alert .sg-event-title {
-  color: var(--clay);
-  font-weight: 600;
+  font-weight: 700;
 }
 
 /* ---------- Plant detail (zoomed-in single-plant page) ---------- */

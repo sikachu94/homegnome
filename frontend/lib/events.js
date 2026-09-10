@@ -15,6 +15,15 @@ export const EVENT_TYPES = {
 
 export const scopeOf = (eventType) => EVENT_TYPES[eventType]?.scope || "planting";
 
+// Event types that render as an andon-style alert regardless of any
+// severity value in their payload — severity isn't a reliable enum since
+// the AI extractor doesn't enforce one (see the event log redesign plan's
+// decision #1). Single source of truth: EventIcon's stamp color, the log's
+// day-rollup highlighting, and each entry's row styling all read from this
+// instead of each keeping their own copy.
+export const ALERT_EVENT_TYPES = new Set(["pest_sighting", "disease_sighting"]);
+export const isAlertEvent = (eventType) => ALERT_EVENT_TYPES.has(eventType);
+
 // Plain-language stand-ins for raw event_type strings. Anywhere a person
 // reads the log, they should see "Watered" and "Pest spotted", not
 // "watering" or "pest_sighting" with underscores swapped for spaces.
@@ -86,6 +95,33 @@ export function quickLogEvent(eventType, entityId, gardenId, extra = {}) {
     confidence: "observed",
     ...extra,
   };
+}
+
+/**
+ * Short human-readable fragment of a saved event's payload, for the
+ * subtitle line under a log entry — e.g. "0.5L, by hand" or "Aphids ·
+ * moderate". Returns null when the payload has nothing worth surfacing
+ * (quick-tap actions log with an empty payload on purpose).
+ */
+export function describeEventPayload(eventType, payload = {}) {
+  switch (eventType) {
+    case "watering":
+      return payload.amount_l ? `${payload.amount_l}L${payload.method ? `, by ${payload.method}` : ""}` : payload.method || null;
+    case "harvest":
+      return payload.quantity ? `${payload.quantity}${payload.unit ? ` ${payload.unit}` : ""}${payload.quality ? `, ${payload.quality}` : ""}` : payload.quality || null;
+    case "pest_sighting":
+      return payload.pest ? `${payload.pest}${payload.severity ? ` · ${payload.severity}` : ""}` : payload.severity || null;
+    case "disease_sighting":
+      return payload.disease ? `${payload.disease}${payload.severity ? ` · ${payload.severity}` : ""}` : payload.severity || null;
+    case "rainfall":
+      return payload.amount_mm ? `${payload.amount_mm}mm` : null;
+    case "frost":
+      return payload.severity || null;
+    case "growth_measurement":
+      return payload.metric ? `${payload.metric}: ${payload.value ?? "—"}${payload.unit ? ` ${payload.unit}` : ""}` : null;
+    default:
+      return null;
+  }
 }
 
 /** Human-readable label for an event's subject, for the recent-log list. */
