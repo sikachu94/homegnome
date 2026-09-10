@@ -4,11 +4,9 @@ import { SPECIES_META } from "../lib/species.js";
 import { projectPlanting, projectContainer } from "../lib/projections.js";
 import { fmtDate, fmtTime, formatComposition, groupByDay } from "../lib/format.js";
 import { friendlyStage } from "../lib/reminders.js";
-import { quickLogEvent, labelForEventType } from "../lib/events.js";
+import { quickLogEvent, labelForEventType, isAlertEvent, describeEventPayload } from "../lib/events.js";
 import { GenericPlantImage } from "./PlantCard.jsx";
 import { EventIcon } from "./EventIcon.jsx";
-
-const ISSUE_TYPES = new Set(["pest_sighting", "disease_sighting"]);
 
 /**
  * The "zoom in" screen for a single plant, reached by tapping its card in
@@ -139,15 +137,18 @@ export function PlantDetail({ planting, containers, events, garden, addEvent, ad
               <div key={group.label} className="sg-day-group">
                 <div className="sg-day-label">{group.label}</div>
                 {group.items.map((e) => {
-                  const isAlert = ISSUE_TYPES.has(e.event_type);
+                  const isAlert = isAlertEvent(e.event_type);
+                  const detail = describeEventPayload(e.event_type, e.payload);
                   return (
                     <div key={e.id} className={`sg-event-row ${isAlert ? "alert" : ""}`}>
                       <EventIcon type={e.event_type} />
-                      <div>
+                      <div className="sg-event-body">
                         <div className="sg-event-title">{labelForEventType(e.event_type)}</div>
-                        <div className="sg-event-meta">{fmtTime(e.timestamp)}{e.note ? ` — "${e.note}"` : ""}</div>
+                        {detail && <div className="sg-event-meta">{detail}</div>}
+                        {e.note && <div className="sg-event-note">"{e.note}"</div>}
+                        {e.media?.length ? <img className="sg-event-thumb" src={e.media[0]} alt="" /> : null}
                       </div>
-                      {e.media?.length ? <img className="sg-event-thumb" src={e.media[0]} alt="" /> : null}
+                      <div className="sg-event-time">{fmtTime(e.timestamp)}</div>
                     </div>
                   );
                 })}

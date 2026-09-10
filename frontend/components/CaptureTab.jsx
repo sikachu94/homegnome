@@ -1,13 +1,12 @@
 import { useState, useRef, useEffect } from "react";
 import { Mic, Square, Sparkles, Loader2, X, Camera, Droplets, Scissors, ChevronDown } from "lucide-react";
 import { apiExtract } from "../api.js";
-import { scopeOf, buildEvent, labelForEntity, labelForEventType, quickLogEvent } from "../lib/events.js";
+import { scopeOf, buildEvent, labelForEntity, labelForEventType, quickLogEvent, isAlertEvent, describeEventPayload } from "../lib/events.js";
 import { uid, fmtTime, groupByDay } from "../lib/format.js";
 import { fileToDataUrl } from "../lib/imageUtils.js";
 import { EventIcon } from "./EventIcon.jsx";
 import { pickPriorityPlanting } from "../lib/reminders.js";
 
-const ISSUE_TYPES = new Set(["pest_sighting", "disease_sighting"]);
 // How many of the most recent events to consider when building the day
 // groups below — high enough that the "collapse older days" behavior has
 // something real to collapse, without loading the whole history.
@@ -50,7 +49,7 @@ export function CaptureTab({ gardenId, plantings, containers, events, addEvent, 
     if (next.has(label)) next.delete(label); else next.add(label);
     return next;
   });
-  const dayHasAlert = (group) => group.items.some((e) => ISSUE_TYPES.has(e.event_type));
+  const dayHasAlert = (group) => group.items.some((e) => isAlertEvent(e.event_type));
 
   const priorityPlanting = plantings.length ? pickPriorityPlanting(plantings, events, weather) : null;
 
@@ -278,15 +277,19 @@ export function CaptureTab({ gardenId, plantings, containers, events, addEvent, 
                   </button>
                 )}
                 {isOpen && group.items.map((e) => {
-                  const isAlert = ISSUE_TYPES.has(e.event_type);
+                  const isAlert = isAlertEvent(e.event_type);
+                  const entityLabel = labelForEntity(e, plantings, containers);
+                  const detail = describeEventPayload(e.event_type, e.payload);
                   return (
                     <div key={e.id} className={`sg-event-row ${isAlert ? "alert" : ""}`}>
                       <EventIcon type={e.event_type} />
-                      <div>
-                        <div className="sg-event-title">{labelForEntity(e, plantings, containers)} · {labelForEventType(e.event_type)}</div>
-                        <div className="sg-event-meta">{fmtTime(e.timestamp)}{e.note ? ` — "${e.note}"` : ""}</div>
+                      <div className="sg-event-body">
+                        <div className="sg-event-title">{labelForEventType(e.event_type)}</div>
+                        <div className="sg-event-meta">{detail ? `${entityLabel} · ${detail}` : entityLabel}</div>
+                        {e.note && <div className="sg-event-note">"{e.note}"</div>}
+                        {e.media?.length ? <img className="sg-event-thumb" src={e.media[0]} alt="" /> : null}
                       </div>
-                      {e.media?.length ? <img className="sg-event-thumb" src={e.media[0]} alt="" /> : null}
+                      <div className="sg-event-time">{fmtTime(e.timestamp)}</div>
                     </div>
                   );
                 })}
