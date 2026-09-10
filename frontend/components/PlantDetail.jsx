@@ -1,23 +1,22 @@
 import { useState, useRef } from "react";
-import { ChevronLeft, ChevronDown, Droplets, Camera, Scissors, Loader2, Box, Layers, MapPin, Bug, CircleCheck as CheckCircle2 } from "lucide-react";
+import { ChevronLeft, ChevronDown, Box, Layers, MapPin, Bug, CircleCheck as CheckCircle2 } from "lucide-react";
 import { SPECIES_META } from "../lib/species.js";
 import { projectPlanting, projectContainer } from "../lib/projections.js";
 import { fmtDate, fmtTime, formatComposition, groupByDay } from "../lib/format.js";
 import { friendlyStage } from "../lib/reminders.js";
-import { quickLogEvent, labelForEventType, isAlertEvent, describeEventPayload } from "../lib/events.js";
+import { labelForEventType, isAlertEvent, describeEventPayload } from "../lib/events.js";
 import { GenericPlantImage } from "./PlantCard.jsx";
 import { EventIcon } from "./EventIcon.jsx";
+import { QuickActions } from "./QuickActions.jsx";
 
 /**
  * The "zoom in" screen for a single plant, reached by tapping its card in
- * the Garden tab. Shows the same quick-tap actions as the Log tab but
- * already scoped to this plant (no "which plant is this for?" step), plus
- * this plant's own history — including its current container's events
- * (soil/relocation), since "when did I last change the soil" belongs on
- * the plant's page even though those events are logged against the
- * container entity.
+ * the Garden tab. Shows the same quick-tap actions as the Log tab
+ * (QuickActions.jsx) already scoped to this plant, its container info, its
+ * siblings in that container, ideal-conditions reference data, and its own
+ * history.
  */
-export function PlantDetail({ planting, containers, events, garden, addEvent, addPlantingPhoto, showToast, onBack }) {
+export function PlantDetail({ planting, plantings, containers, events, garden, addEvent, addPlantingPhoto, showToast, onBack, onSelectPlanting, onRequestManualEntry }) {
   const proj = projectPlanting(planting, events);
   const meta = SPECIES_META[planting.species];
   const container = containers.find((c) => c.id === proj.container_id);
@@ -33,6 +32,7 @@ export function PlantDetail({ planting, containers, events, garden, addEvent, ad
   const runQuick = async (eventType) => {
     setQuickBusy(eventType);
     try {
+      const { quickLogEvent } = await import("../lib/events.js");
       await addEvent(quickLogEvent(eventType, planting.id, garden?.id));
       notify(`${labelForEventType(eventType)}.`);
     } catch (err) {
@@ -54,6 +54,14 @@ export function PlantDetail({ planting, containers, events, garden, addEvent, ad
       setQuickBusy(null);
     }
   };
+
+  // Other plantings sharing this plant's current container — just a link
+  // over to their own zoom-in page, nothing more.
+  const siblings = container
+    ? (plantings || [])
+      .filter((p) => p.id !== planting.id)
+      .filter((p) => projectPlanting(p, events).container_id === container.id)
+    : [];
 
   // This plant's own events, plus its current container's events (soil
   // amendments, relocations) — those are logged against the container
@@ -94,11 +102,41 @@ export function PlantDetail({ planting, containers, events, garden, addEvent, ad
         <div><span>Harvests</span><strong>{proj.harvest_count || "—"}</strong></div>
       </div>
 
+      <QuickActions
+        busy={quickBusy}
+        onWater={() => runQuick("watering")}
+        onHarvest={() => runQuick("harvest")}
+        onPhotoClick={() => photoInputRef.current?.click()}
+        onMeasure={() => onRequestManualEntry?.("growth_measurement", planting.id)}
+        onIssue={() => onRequestManualEntry?.("pest_sighting", planting.id)}
+      />
+      <input ref={photoInputRef} type="file" accept="image/*" hidden onChange={(e) => { handlePhoto(e.target.files?.[0]); e.target.value = ""; }} />
+
       {container && (
-        <div className="sg-container-info" style={{ margin: "0 0 16px", border: "none", padding: 0 }}>
+        <div className="sg-container-info" style={{ margin: "16px 0 16px", border: "none", padding: 0 }}>
           <span><Box size={12} /> {container.type.replace("_", " ")} · {container.material}{container.volume_l ? ` · ${container.volume_l}L` : ""}</span>
           <span><Layers size={12} /> {formatComposition(contState.soil_composition)}</span>
           <span><MapPin size={12} /> {contState.placement}</span>
+        </div>
+      )}
+
+      {siblings.length > 0 && (
+        <div className="sg-siblings-section">
+          <h2>Also in this container</h2>
+          <div className="sg-siblings-row">
+            {siblings.map((sib) => {
+              const sibProj = projectPlanting(sib, events);
+              const sibMeta = SPECIES_META[sib.species];
+              return (
+                <button key={sib.id} className="sg-sibling" onClick={() => onSelectPlanting?.(sib.id)}>
+                  <div className="sg-sibling-avatar">
+                    {sibProj.cover_image ? <img src={sibProj.cover_image} alt={sib.nickname} /> : <GenericPlantImage harvestType={sibMeta?.harvest_type} size={18} />}
+                  </div>
+                  <span>{sib.nickname}</span>
+                </button>
+              );
+            })}
+          </div>
         </div>
       )}
 
@@ -108,22 +146,24 @@ export function PlantDetail({ planting, containers, events, garden, addEvent, ad
         </div>
       )}
 
-      <div className="sg-quick-actions">
-        <button className="sg-quick-btn primary" disabled={quickBusy !== null} onClick={() => runQuick("watering")}>
-          {quickBusy === "watering" ? <Loader2 className="spin" size={18} /> : <Droplets size={18} />} Water
-        </button>
-        <button className="sg-quick-btn" disabled={quickBusy !== null} onClick={() => photoInputRef.current?.click()}>
-          {quickBusy === "photo_log" ? <Loader2 className="spin" size={18} /> : <Camera size={18} />} Photo
-        </button>
-        <input ref={photoInputRef} type="file" accept="image/*" hidden onChange={(e) => { handlePhoto(e.target.files?.[0]); e.target.value = ""; }} />
-        <button className="sg-quick-btn" disabled={quickBusy !== null} onClick={() => runQuick("harvest")}>
-          {quickBusy === "harvest" ? <Loader2 className="spin" size={18} /> : <Scissors size={18} />} Harvest
-        </button>
-      </div>
-
-      {meta && (
-        <div className="sg-reference" style={{ margin: "0 0 18px", border: "none", padding: 0 }}>
-          Ideal: {meta.sun_hours[0]}–{meta.sun_hours[1]}h sun · water ~every {meta.water_frequency_days}d · ~{meta.days_to_maturity}d to maturity
+      {(meta || planting.species_info) && (
+        <div className="sg-ideal-card">
+          <h2>Ideal conditions</h2>
+          {planting.species_info?.latin_name && <p className="sg-latin-name">{planting.species_info.latin_name}</p>}
+          {planting.species_info && (
+            <table className="sg-ideal-table">
+              <tbody>
+                {planting.species_info.variety && <tr><td>Variety</td><td>{planting.species_info.variety}</td></tr>}
+                {planting.species_info.life_cycle_type && <tr><td>Life cycle</td><td>{planting.species_info.life_cycle_type}</td></tr>}
+                {planting.species_info.harvest_type && <tr><td>Harvest type</td><td>{planting.species_info.harvest_type}</td></tr>}
+              </tbody>
+            </table>
+          )}
+          {meta && (
+            <p className="sg-ideal-summary">
+              {meta.sun_hours[0]}–{meta.sun_hours[1]}h sun · water ~every {meta.water_frequency_days}d · ~{meta.days_to_maturity}d to maturity
+            </p>
+          )}
         </div>
       )}
 

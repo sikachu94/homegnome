@@ -1,18 +1,39 @@
 import { useState, useRef, useEffect } from "react";
-import { Mic, Square, Sparkles, Loader2, X, Camera, Droplets, Scissors, ChevronDown } from "lucide-react";
+import { Mic, Square, Sparkles, Loader2, X, ImagePlus, ChevronDown } from "lucide-react";
 import { apiExtract } from "../api.js";
-import { scopeOf, buildEvent, labelForEntity, labelForEventType, quickLogEvent, isAlertEvent, describeEventPayload } from "../lib/events.js";
+import {
+  scopeOf, buildEvent, labelForEntity, labelForEventType, quickLogEvent, isAlertEvent, describeEventPayload,
+  MANUAL_ENTRY_TYPES, MANUAL_ENTRY_LABELS, MANUAL_ENTRY_FIELDS, buildManualEvents,
+} from "../lib/events.js";
 import { uid, fmtTime, groupByDay } from "../lib/format.js";
 import { fileToDataUrl } from "../lib/imageUtils.js";
 import { EventIcon } from "./EventIcon.jsx";
-import { pickPriorityPlanting } from "../lib/reminders.js";
+import { QuickActions } from "./QuickActions.jsx";
+import { Reminders } from "./Reminders.jsx";
+import { buildReminders, pickPriorityPlanting } from "../lib/reminders.js";
 
 // How many of the most recent events to consider when building the day
 // groups below — high enough that the "collapse older days" behavior has
 // something real to collapse, without loading the whole history.
 const RECENT_EVENT_WINDOW = 25;
 
-export function CaptureTab({ gardenId, plantings, containers, events, addEvent, resetSignal, showToast, weather }) {
+// Default plant selection for the manual form: whoever's already flagged by
+// a reminder for this action type, falling back to the single priority
+// plant (same "whoever needs it most" logic the old quick actions used).
+function defaultTargetsForType(type, plantings, events, weather) {
+  const kindByType = { watering: "water", harvest: "harvest", pest_sighting: "issue", disease_sighting: "issue" };
+  const kind = kindByType[type];
+  if (kind) {
+    const flagged = buildReminders(plantings, events, weather)
+      .filter((r) => r.kind === kind)
+      .map((r) => r.planting_id);
+    if (flagged.length) return new Set(flagged);
+  }
+  const fallback = pickPriorityPlanting(plantings, events, weather);
+  return fallback ? new Set([fallback.id]) : new Set();
+}
+
+export function CaptureTab({ gardenId, plantings, containers, events, addEvent, resetSignal, showToast, weather, onNewPlant, manualEntryRequest }) {
   const [note, setNote] = useState("");
   const [noteExpanded, setNoteExpanded] = useState(false);
   const [listening, setListening] = useState(false);
@@ -24,6 +45,15 @@ export function CaptureTab({ gardenId, plantings, containers, events, addEvent, 
   const [quickBusy, setQuickBusy] = useState(null);
   const recognitionRef = useRef(null);
   const photoInputRef = useRef(null);
+  const manualFormRef = useRef(null);
+
+  // Manual log-entry form state — the primary, non-AI way to log activity.
+  const [manualType, setManualType] = useState("watering");
+  const [manualTargets, setManualTargets] = useState(() => new Set());
+  const [manualValues, setManualValues] = useState({});
+  const [manualNote, setManualNote] = useState("");
+  const [manualPhoto, setManualPhoto] = useState(null);
+  const [manualSaving, setManualSaving] = useState(false);
 
   const notify = (message, kind = "success") => showToast?.(message, kind);
 
@@ -35,12 +65,41 @@ export function CaptureTab({ gardenId, plantings, containers, events, addEvent, 
   // on treating the log as a scan, not a wall of rows.
   const [expandedDays, setExpandedDays] = useState(() => new Set(dayGroups.slice(0, 2).map((g) => g.label)));
 
-  // Demo reset only clears drafts and collapses back to the default state —
-  // the in-progress note text is left alone, same as before.
+  const selectManualType = (type) => {
+    setManualType(type);
+    setManualTargets(defaultTargetsForType(type, plantings, events, weather));
+    setManualValues({});
+    setManualNote("");
+    setManualPhoto(null);
+  };
+
+  // Populate an initial default selection once plantings are available —
+  // selectManualType only runs from then on when the person picks a chip,
+  // switches tabs elsewhere, or a "Measure"/"Pest" quick action jumps here.
+  useEffect(() => {
+    setManualTargets((prev) => (prev.size ? prev : defaultTargetsForType(manualType, plantings, events, weather)));
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [plantings.length]);
+
+  // A "Measure" / "Pest or disease" quick action on a specific plant's
+  // detail page (PlantDetail.jsx) routes here via App's manualEntryRequest,
+  // scoped to that one plant instead of the tab's own priority plant.
+  useEffect(() => {
+    if (!manualEntryRequest) return;
+    selectManualType(manualEntryRequest.type);
+    setManualTargets(new Set([manualEntryRequest.plantingId]));
+    manualFormRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [manualEntryRequest]);
+
+  // Demo reset clears drafts, collapses days back to the default state, and
+  // resets the manual form to its default type/target — in-progress free
+  // text is left alone, same as before.
   useEffect(() => {
     setDrafts([]);
     setNoteExpanded(false);
     setExpandedDays(new Set(dayGroups.slice(0, 2).map((g) => g.label)));
+    selectManualType("watering");
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [resetSignal]);
 
@@ -51,7 +110,17 @@ export function CaptureTab({ gardenId, plantings, containers, events, addEvent, 
   });
   const dayHasAlert = (group) => group.items.some((e) => isAlertEvent(e.event_type));
 
+  const reminders = buildReminders(plantings, events, weather);
   const priorityPlanting = plantings.length ? pickPriorityPlanting(plantings, events, weather) : null;
+
+  const handleLogWatering = async (plantingId) => {
+    try {
+      await addEvent(quickLogEvent("watering", plantingId, gardenId));
+      notify("Watered.");
+    } catch (err) {
+      notify("Couldn't save that — try again.", "error");
+    }
+  };
 
   const runQuickAction = async (eventType) => {
     if (!priorityPlanting) return;
@@ -77,6 +146,67 @@ export function CaptureTab({ gardenId, plantings, containers, events, addEvent, 
       notify("Couldn't attach that photo — try again.", "error");
     } finally {
       setQuickBusy(null);
+    }
+  };
+
+  // "Measure" and "Pest / disease" can't log blind (no meaningful default
+  // payload), so they jump to the manual form pre-scoped to the priority
+  // plant instead of firing an event immediately.
+  const focusManualEntry = (type) => {
+    selectManualType(type);
+    if (priorityPlanting) setManualTargets(new Set([priorityPlanting.id]));
+    manualFormRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
+  };
+
+  const toggleTarget = (plantingId) => setManualTargets((prev) => {
+    const next = new Set(prev);
+    if (manualType === "photo_log") {
+      next.clear();
+      next.add(plantingId);
+      return next;
+    }
+    if (next.has(plantingId)) next.delete(plantingId); else next.add(plantingId);
+    return next;
+  });
+  const selectAllTargets = () => setManualTargets(new Set(plantings.map((p) => p.id)));
+
+  const attachManualPhoto = async (file) => {
+    if (!file) return;
+    try {
+      const dataUrl = await fileToDataUrl(file);
+      setManualPhoto(dataUrl);
+    } catch (err) { console.error(err); }
+  };
+
+  const saveManualEntry = async () => {
+    if (!manualTargets.size) return;
+    if (manualType === "photo_log" && !manualPhoto) return;
+    setManualSaving(true);
+    try {
+      const fields = MANUAL_ENTRY_FIELDS[manualType] || [];
+      const payload = {};
+      for (const field of fields) {
+        const raw = manualValues[field.key];
+        if (raw === undefined || raw === "") continue;
+        payload[field.key] = field.kind === "number" ? Number(raw) : raw;
+      }
+      const built = buildManualEvents({
+        eventType: manualType,
+        gardenId,
+        plantingIds: Array.from(manualTargets),
+        payload,
+        note: manualNote.trim(),
+        media: manualType === "photo_log" && manualPhoto ? [manualPhoto] : undefined,
+      });
+      await addEvent(built);
+      notify(`Logged ${MANUAL_ENTRY_LABELS[manualType].toLowerCase()} for ${built.length} ${built.length === 1 ? "plant" : "plants"}.`);
+      setManualValues({});
+      setManualNote("");
+      setManualPhoto(null);
+    } catch (err) {
+      notify("Couldn't save that — try again.", "error");
+    } finally {
+      setManualSaving(false);
     }
   };
 
@@ -175,29 +305,130 @@ export function CaptureTab({ gardenId, plantings, containers, events, addEvent, 
   return (
     <section className="sg-panel">
       <h1>What's happening in the garden?</h1>
-      <p className="sg-sub">Water, snap a photo, or log a harvest in one tap — or describe anything else below.</p>
+      <p className="sg-sub">Log an entry, snap a photo, or speak or type a note — whichever's fastest.</p>
+
+      {plantings.length > 0 && (
+        <div className="sg-reminders-section">
+          <h2>Needs attention</h2>
+          <Reminders reminders={reminders} onLogWatering={handleLogWatering} />
+        </div>
+      )}
 
       {plantings.length > 0 && (
         <>
-          <div className="sg-quick-actions">
-            <button className="sg-quick-btn primary" disabled={quickBusy !== null || !priorityPlanting} onClick={() => runQuickAction("watering")}>
-              {quickBusy === "watering" ? <Loader2 className="spin" size={18} /> : <Droplets size={18} />} Water
-            </button>
-            <button className="sg-quick-btn" disabled={quickBusy !== null || !priorityPlanting} onClick={() => photoInputRef.current?.click()}>
-              {quickBusy === "photo_log" ? <Loader2 className="spin" size={18} /> : <Camera size={18} />} Photo
-            </button>
-            <input ref={photoInputRef} type="file" accept="image/*" hidden onChange={(e) => { handleQuickPhoto(e.target.files?.[0]); e.target.value = ""; }} />
-            <button className="sg-quick-btn" disabled={quickBusy !== null || !priorityPlanting} onClick={() => runQuickAction("harvest")}>
-              {quickBusy === "harvest" ? <Loader2 className="spin" size={18} /> : <Scissors size={18} />} Harvest
-            </button>
-          </div>
-          {priorityPlanting && <p className="sg-quick-hint">Water targets {priorityPlanting.nickname} — whichever plant needs it most right now. Logging for someone else? Open their card in Garden instead.</p>}
+          <p className="sg-form-label" style={{ margin: "18px 0 8px" }}>Quick actions</p>
+          <QuickActions
+            busy={quickBusy}
+            disabled={!priorityPlanting}
+            onWater={() => runQuickAction("watering")}
+            onHarvest={() => runQuickAction("harvest")}
+            onPhotoClick={() => photoInputRef.current?.click()}
+            onMeasure={() => focusManualEntry("growth_measurement")}
+            onIssue={() => focusManualEntry("pest_sighting")}
+            onNewPlant={onNewPlant}
+          />
+          <input ref={photoInputRef} type="file" accept="image/*" hidden onChange={(e) => { handleQuickPhoto(e.target.files?.[0]); e.target.value = ""; }} />
+          {priorityPlanting && <p className="sg-quick-hint">Water/Harvest/Photo target {priorityPlanting.nickname} — whichever plant needs it most right now. Measure and Pest/disease open the form below so you can pick any plant(s) and fill in details.</p>}
         </>
       )}
 
+      <div className="sg-manual-card" ref={manualFormRef}>
+        <h2>Log entry</h2>
+        <div className="sg-type-chips">
+          {MANUAL_ENTRY_TYPES.map((type) => (
+            <button
+              key={type}
+              className={`sg-chip${manualType === type ? " active" : ""}`}
+              onClick={() => selectManualType(type)}
+            >
+              {MANUAL_ENTRY_LABELS[type]}
+            </button>
+          ))}
+        </div>
+
+        <div className="sg-target-header">
+          <span className="sg-form-label">Which plants?</span>
+          {manualType !== "photo_log" && plantings.length > 1 && (
+            <button className="sg-select-all" onClick={selectAllTargets}>Select all</button>
+          )}
+        </div>
+        {plantings.length === 0 ? (
+          <p className="sg-empty">Add a plant first — see the Garden tab.</p>
+        ) : (
+          <div className="sg-target-list">
+            {plantings.map((p) => (
+              <label key={p.id} className="sg-target-row">
+                <input
+                  type={manualType === "photo_log" ? "radio" : "checkbox"}
+                  name="manual-target"
+                  checked={manualTargets.has(p.id)}
+                  onChange={() => toggleTarget(p.id)}
+                />
+                {p.nickname}
+              </label>
+            ))}
+          </div>
+        )}
+
+        {MANUAL_ENTRY_FIELDS[manualType].length > 0 && (
+          <div className="sg-draft-row">
+            {MANUAL_ENTRY_FIELDS[manualType].map((field) => (
+              field.kind === "select" ? (
+                <select
+                  key={field.key}
+                  value={manualValues[field.key] || ""}
+                  onChange={(e) => setManualValues((v) => ({ ...v, [field.key]: e.target.value }))}
+                >
+                  <option value="">{field.label}</option>
+                  {field.options.map((opt) => <option key={opt} value={opt}>{opt}</option>)}
+                </select>
+              ) : (
+                <input
+                  key={field.key}
+                  type={field.kind}
+                  placeholder={field.placeholder || field.label}
+                  value={manualValues[field.key] || ""}
+                  onChange={(e) => setManualValues((v) => ({ ...v, [field.key]: e.target.value }))}
+                />
+              )
+            ))}
+          </div>
+        )}
+
+        {manualType === "photo_log" && (
+          <div className="sg-draft-row">
+            {manualPhoto ? (
+              <div className="sg-photo-thumb"><img src={manualPhoto} alt="attached" /><button onClick={() => setManualPhoto(null)}><X size={10} /></button></div>
+            ) : (
+              <label className="sg-photo-add wide">
+                <ImagePlus size={13} /> Add a photo
+                <input type="file" accept="image/*" hidden onChange={(e) => attachManualPhoto(e.target.files?.[0])} />
+              </label>
+            )}
+          </div>
+        )}
+
+        <textarea
+          className="sg-manual-note"
+          placeholder="Add a note (optional)"
+          rows={2}
+          value={manualNote}
+          onChange={(e) => setManualNote(e.target.value)}
+        />
+
+        <button
+          className="sg-primary"
+          disabled={manualSaving || manualTargets.size === 0 || (manualType === "photo_log" && !manualPhoto)}
+          onClick={saveManualEntry}
+        >
+          {manualSaving ? <Loader2 className="spin" size={14} /> : null}
+          Log for {manualTargets.size} {manualTargets.size === 1 ? "plant" : "plants"}
+        </button>
+      </div>
+
       {!noteExpanded ? (
         <button className="sg-note-toggle" onClick={() => setNoteExpanded(true)}>
-          <Sparkles size={14} /> Describe something else…
+          <Mic size={14} /> Or describe it in your own words
         </button>
       ) : (
         <div className="sg-capture-box">
@@ -238,7 +469,7 @@ export function CaptureTab({ gardenId, plantings, containers, events, addEvent, 
                   {d.media?.length ? (
                     <div className="sg-photo-thumb"><img src={d.media[0]} alt="attached" /><button onClick={() => removeDraftPhoto(d.draft_id)}><X size={10} /></button></div>
                   ) : (
-                    <label className="sg-photo-add"><Camera size={13} /><input type="file" accept="image/*" hidden onChange={(e) => attachDraftPhoto(d.draft_id, e.target.files?.[0])} /></label>
+                    <label className="sg-photo-add"><Sparkles size={13} /><input type="file" accept="image/*" hidden onChange={(e) => attachDraftPhoto(d.draft_id, e.target.files?.[0])} /></label>
                   )}
                   {scopeOf(d.event_type) === "garden" ? (
                     <span className="sg-pill muted">Applies to the whole garden</span>

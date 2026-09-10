@@ -21,6 +21,8 @@ const TABS = [
 export default function App() {
   const [tab, setTab] = useState("capture");
   const [resetKey, setResetKey] = useState(0);
+  const [openAddPlantSignal, setOpenAddPlantSignal] = useState(0);
+  const [manualEntryRequest, setManualEntryRequest] = useState(null);
   const { toast, showToast } = useToast();
 
   const {
@@ -35,6 +37,20 @@ export default function App() {
     setGardenLocation, clearGardenLocation, useMyLocation,
     refresh: refreshWeather, reset: resetWeather,
   } = useWeather({ garden, events: events || [], addEvent, updateGardenAndPersist });
+
+  // "New plant" quick action on the Log tab -> switch to Garden and open its
+  // existing add-plant form.
+  const goToAddPlant = () => {
+    setTab("plants");
+    setOpenAddPlantSignal((n) => n + 1);
+  };
+
+  // "Measure" / "Pest or disease" quick action on a plant's zoom-in page ->
+  // switch to the Log tab, pre-scoped to that specific plant.
+  const requestManualEntry = (type, plantingId) => {
+    setTab("capture");
+    setManualEntryRequest((prev) => ({ type, plantingId, nonce: (prev?.nonce || 0) + 1 }));
+  };
 
   const resetDemo = async () => {
     try {
@@ -119,6 +135,7 @@ export default function App() {
           <CaptureTab
             gardenId={gardenId} plantings={plantings} containers={containers} events={events}
             addEvent={addEvent} resetSignal={resetKey} showToast={showToast} weather={weather}
+            onNewPlant={goToAddPlant} manualEntryRequest={manualEntryRequest}
           />
         </div>
         <div hidden={tab !== "plants"}>
@@ -128,6 +145,7 @@ export default function App() {
             weather={weather}
             updateGardenLocal={updateGardenLocal} updateGardenAndPersist={updateGardenAndPersist}
             persistGarden={persistGarden} showToast={showToast}
+            openAddSignal={openAddPlantSignal} onRequestManualEntry={requestManualEntry}
           />
         </div>
         <div hidden={tab !== "chat"}>

@@ -59,6 +59,51 @@ def test_openrouter_client_sends_openai_compatible_request(monkeypatch):
     assert response.choices[0].message.content == '{"reply":"Hello"}'
 
 
+def test_openrouter_client_retries_without_response_format(monkeypatch):
+    requests = []
+
+    class FakeResponse:
+        def __init__(self, status_code, payload):
+            self.status_code = status_code
+            self.payload = payload
+
+        def raise_for_status(self):
+            return None
+
+        def json(self):
+            return self.payload
+
+        @property
+        def text(self):
+            return "response_format is not supported"
+
+    def fake_post(_url, **kwargs):
+        requests.append(kwargs["json"].copy())
+        if len(requests) == 1:
+            return FakeResponse(400, {"error": {"message": "response_format is not supported"}})
+        return FakeResponse(200, {"choices": [{"message": {"content": "{\"reply\":\"Hello\"}"}}]})
+
+    monkeypatch.setattr(deps.httpx, "post", fake_post)
+    response = OpenRouterClient("test-key").chat.complete(
+        model="openai/test-model",
+        messages=[{"role": "user", "content": "Hello"}],
+        response_format={"type": "json_object"},
+    )
+
+    assert response.choices[0].message.content == '{"reply":"Hello"}'
+    assert requests == [
+        {
+            "model": "openai/test-model",
+            "messages": [{"role": "user", "content": "Hello"}],
+            "response_format": {"type": "json_object"},
+        },
+        {
+            "model": "openai/test-model",
+            "messages": [{"role": "user", "content": "Hello"}],
+        },
+    ]
+
+
 def test_health_endpoint_reports_ready():
     response = client.get("/api/health")
 

@@ -49,7 +49,58 @@ export function labelForEventType(eventType) {
   return EVENT_TYPE_LABELS[eventType] || eventType.replace(/_/g, " ");
 }
 
-/** Turns a parsed draft into a full event-log entry ready to persist. */
+// The manual log-entry form on the Log tab offers these as its type chips,
+// in this order. Present-tense/type-name labels ("Watering", "Pest") on
+// purpose — distinct from EVENT_TYPE_LABELS above, which is past-tense for
+// describing something that already happened in the log rows.
+export const MANUAL_ENTRY_TYPES = [
+  "watering",
+  "harvest",
+  "growth_measurement",
+  "pest_sighting",
+  "disease_sighting",
+  "photo_log",
+];
+
+export const MANUAL_ENTRY_LABELS = {
+  watering: "Watering",
+  harvest: "Harvest",
+  growth_measurement: "Measurement",
+  pest_sighting: "Pest",
+  disease_sighting: "Disease",
+  photo_log: "Photo",
+};
+
+// Field definitions for the manual log-entry form. Each field is
+// { key, label, kind: "number" | "text" | "select", options?, placeholder? }.
+export const MANUAL_ENTRY_FIELDS = {
+  watering: [
+    { key: "amount_l", label: "Amount (litres)", kind: "number" },
+    { key: "method", label: "Method", kind: "select", options: ["hand", "drip", "sprinkler"] },
+  ],
+  harvest: [
+    { key: "quantity", label: "Quantity", kind: "number" },
+    { key: "unit", label: "Unit", kind: "select", options: ["g", "kg", "pieces"] },
+    { key: "quality", label: "Quality", kind: "select", options: ["poor", "fair", "good", "excellent"] },
+  ],
+  growth_measurement: [
+    { key: "metric", label: "What are you measuring?", kind: "text", placeholder: "e.g. height" },
+    { key: "value", label: "Value", kind: "number" },
+    { key: "unit", label: "Unit", kind: "text", placeholder: "e.g. cm" },
+  ],
+  pest_sighting: [
+    { key: "pest", label: "Pest", kind: "text", placeholder: "e.g. aphids" },
+    { key: "severity", label: "Severity", kind: "select", options: ["light", "moderate", "severe"] },
+    { key: "affected_area", label: "Affected area", kind: "text", placeholder: "optional" },
+  ],
+  disease_sighting: [
+    { key: "disease", label: "Disease", kind: "text", placeholder: "e.g. powdery mildew" },
+    { key: "severity", label: "Severity", kind: "select", options: ["light", "moderate", "severe"] },
+  ],
+  photo_log: [],
+};
+
+/** Turns a parsed AI draft into a full event-log entry ready to persist. */
 export function buildEvent(draft, gardenId) {
   const scope = scopeOf(draft.event_type);
   return {
@@ -71,13 +122,6 @@ export function buildEvent(draft, gardenId) {
 /**
  * Builds a minimal, ready-to-persist event for one-tap quick actions
  * (watering, harvest, photo_log) — no note, empty payload by default.
- * `extra` lets callers attach things buildEvent's draft shape doesn't cover,
- * e.g. `{ media: [dataUrl] }` for a quick photo, or a payload override.
- *
- * Deliberately separate from buildEvent: quick actions always know their
- * target entity directly (no draft.planting_id / scopeOf inference needed
- * from free-text extraction), and always start from an empty payload since
- * there's no note for the AI to have parsed fields out of.
  */
 export function quickLogEvent(eventType, entityId, gardenId, extra = {}) {
   const meta = EVENT_TYPES[eventType];
@@ -95,6 +139,29 @@ export function quickLogEvent(eventType, entityId, gardenId, extra = {}) {
     confidence: "observed",
     ...extra,
   };
+}
+
+/**
+ * Builds one ready-to-persist event per target planting for the manual
+ * log-entry form — the multi-plant, structured-fields counterpart to
+ * quickLogEvent above.
+ */
+export function buildManualEvents({ eventType, gardenId, plantingIds, payload = {}, note, media }) {
+  const meta = EVENT_TYPES[eventType];
+  return plantingIds.map((plantingId) => ({
+    id: uid("evt"),
+    timestamp: new Date().toISOString(),
+    garden_id: gardenId,
+    entity_type: "planting",
+    entity_id: plantingId,
+    category: meta?.category || "action",
+    source: "self",
+    event_type: eventType,
+    payload,
+    note: note || undefined,
+    media: media?.length ? media : undefined,
+    confidence: "observed",
+  }));
 }
 
 /**

@@ -16,7 +16,7 @@ const blankNewPlanting = () => ({
   photo: null,
 });
 
-export function PlantsTab({ garden, plantings, containers, events, addPlanting, addPlantingPhoto, addEvent, weather, updateGardenLocal, updateGardenAndPersist, persistGarden, showToast }) {
+export function PlantsTab({ garden, plantings, containers, events, addPlanting, addPlantingPhoto, addEvent, weather, updateGardenLocal, updateGardenAndPersist, persistGarden, showToast, openAddSignal, onRequestManualEntry }) {
   const [showAddForm, setShowAddForm] = useState(false);
   const [showAdvanced, setShowAdvanced] = useState(false);
   const [newPlanting, setNewPlanting] = useState(blankNewPlanting());
@@ -27,6 +27,12 @@ export function PlantsTab({ garden, plantings, containers, events, addPlanting, 
   useEffect(() => {
     if (selectedPlantingId && !plantings.some((p) => p.id === selectedPlantingId)) setSelectedPlantingId(null);
   }, [selectedPlantingId, plantings]);
+
+  // The Log tab's "New plant" quick action switches to this tab and bumps
+  // openAddSignal — open the add-plant form in response.
+  useEffect(() => {
+    if (openAddSignal) setShowAddForm(true);
+  }, [openAddSignal]);
 
   const handleNewPlantingPhoto = async (file) => {
     if (!file) return;
@@ -63,6 +69,7 @@ export function PlantsTab({ garden, plantings, containers, events, addPlanting, 
     return (
       <PlantDetail
         planting={selectedPlanting}
+        plantings={plantings}
         containers={containers}
         events={events}
         garden={garden}
@@ -70,6 +77,8 @@ export function PlantsTab({ garden, plantings, containers, events, addPlanting, 
         addPlantingPhoto={addPlantingPhoto}
         showToast={showToast}
         onBack={() => setSelectedPlantingId(null)}
+        onSelectPlanting={(id) => setSelectedPlantingId(id)}
+        onRequestManualEntry={onRequestManualEntry}
       />
     );
   }
