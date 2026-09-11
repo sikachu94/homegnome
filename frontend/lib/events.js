@@ -11,14 +11,8 @@ export const EVENT_TYPES = {
   photo_log: { category: "observation", scope: "planting", fields: "(no payload — just a photo)" },
   rainfall: { category: "measurement", scope: "garden", fields: "amount_mm" },
   frost: { category: "observation", scope: "garden", fields: "severity?" },
+  garden_note: { category: "observation", scope: "garden", fields: "note" },
 };
-EVENT_TYPES.garden_note = { category: "observation", scope: "garden", fields: "note" };
-
-EVENT_TYPE_LABELS.garden_note = "Garden note";
-
-MANUAL_ENTRY_TYPES.push("garden_note");
-MANUAL_ENTRY_LABELS.garden_note = "Garden note";
-MANUAL_ENTRY_FIELDS.garden_note = [];
 
 export const scopeOf = (eventType) => EVENT_TYPES[eventType]?.scope || "planting";
 
@@ -50,6 +44,7 @@ export const EVENT_TYPE_LABELS = {
   relocated: "Moved",
   soil_amended: "Soil changed",
   transplanted: "Transplanted",
+  garden_note: "Garden note"
 };
 
 export function labelForEventType(eventType) {
@@ -66,6 +61,7 @@ export const MANUAL_ENTRY_TYPES = [
   "growth_measurement",
   "pest_sighting",
   "disease_sighting",
+  "garden_event",
   "photo_log",
 ];
 
@@ -75,6 +71,7 @@ export const MANUAL_ENTRY_LABELS = {
   growth_measurement: "Measurement",
   pest_sighting: "Pest",
   disease_sighting: "Disease",
+  garden_note: "Garden Event",
   photo_log: "Photo",
 };
 
@@ -105,6 +102,7 @@ export const MANUAL_ENTRY_FIELDS = {
     { key: "disease", label: "Disease", kind: "text", placeholder: "e.g. powdery mildew" },
     { key: "severity", label: "Severity", kind: "select", options: ["light", "moderate", "severe"] },
   ],
+  garden_event: [],
   photo_log: [],
 };
 
@@ -147,29 +145,6 @@ export function quickLogEvent(eventType, entityId, gardenId, extra = {}) {
     confidence: "observed",
     ...extra,
   };
-}
-
-/**
- * Builds one ready-to-persist event per target planting for the manual
- * log-entry form — the multi-plant, structured-fields counterpart to
- * quickLogEvent above.
- */
-export function buildManualEvents({ eventType, gardenId, plantingIds, payload = {}, note, media }) {
-  const meta = EVENT_TYPES[eventType];
-  return plantingIds.map((plantingId) => ({
-    id: uid("evt"),
-    timestamp: new Date().toISOString(),
-    garden_id: gardenId,
-    entity_type: "planting",
-    entity_id: plantingId,
-    category: meta?.category || "action",
-    source: "self",
-    event_type: eventType,
-    payload,
-    note: note || undefined,
-    media: media?.length ? media : undefined,
-    confidence: "observed",
-  }));
 }
 
 /**

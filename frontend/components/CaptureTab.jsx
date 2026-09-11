@@ -479,7 +479,7 @@ export function CaptureTab({ gardenId, plantings, containers, events, addEvent, 
               onClick={saveManualEntry}
             >
               {manualSaving ? <Loader2 className="spin" size={14} /> : null}
-              Log for {manualTargets.size} {manualTargets.size === 1 ? "plant" : "plants"}
+              {scopeOf(manualType) === "garden" ? "Log for the whole garden" : `Log for ${manualTargets.size} ${manualTargets.size === 1 ? "plant" : "plants"}`}
             </button>
           </div>
         )}
