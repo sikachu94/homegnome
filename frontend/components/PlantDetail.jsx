@@ -26,7 +26,7 @@ export function PlantDetail({ planting, plantings, containers, events, garden, a
   const isBolting = meta?.flowering_signal === "decline_warning" && proj.stage === "flowering" && proj.status === "active";
   const usda = planting.species_info;
   const hasUsdaData = usda && [
-    "latin_name", "ph_min", "ph_max", "precipitation_min_in", "precipitation_max_in",
+    "ph_min", "ph_max", "precipitation_min_in", "precipitation_max_in",
     "moisture_use", "drought_tolerance", "shade_tolerance", "growth_habit", "bloom_period",
     "usda_source_url",
   ].some((field) => usda[field] !== null && usda[field] !== undefined && usda[field] !== "");
@@ -146,27 +146,29 @@ export function PlantDetail({ planting, plantings, containers, events, garden, a
 
       {(meta || planting.species_info) && (
         <div className="sg-ideal-card">
+          {planting.species_info?.latin_name && <span className="sg-latin-name">{planting.species_info.latin_name}</span>}
+          {planting.species_info?.usda_common_name && <span className="sg-common-name">{planting.species_info.usda_common_name}</span>}
           <h2>Ideal conditions</h2>
-          {planting.species_info?.latin_name && <p className="sg-latin-name">{planting.species_info.latin_name}</p>}
-          {planting.species_info && (
-            <table className="sg-ideal-table">
-              <tbody>
-                {planting.species_info.variety && <tr><td>Variety</td><td>{planting.species_info.variety}</td></tr>}
-                {planting.species_info.life_cycle_type && <tr><td>Life cycle</td><td>{planting.species_info.life_cycle_type}</td></tr>}
-                {planting.species_info.harvest_type && <tr><td>Harvest type</td><td>{planting.species_info.harvest_type}</td></tr>}
-              </tbody>
-            </table>
-          )}
+
           {meta && (
-            <p className="sg-ideal-summary">
-              {meta.sun_hours[0]}–{meta.sun_hours[1]}h sun · water ~every {meta.water_frequency_days}d · ~{meta.days_to_maturity}d to maturity
-            </p>
+            <div className="sg-ideal-stats">
+              <div><span>Sun</span><strong>{meta.sun_hours[0]}–{meta.sun_hours[1]}h/day</strong></div>
+              <div><span>Water</span><strong>Every ~{meta.water_frequency_days}d</strong></div>
+              <div><span>Maturity</span><strong>~{meta.days_to_maturity}d</strong></div>
+            </div>
           )}
+
+          {planting.species_info && (planting.species_info.variety || planting.species_info.life_cycle_type || planting.species_info.harvest_type) && (
+            <div className="sg-ideal-rows">
+              {planting.species_info.variety && <div><span>Variety</span><strong>{planting.species_info.variety}</strong></div>}
+              {planting.species_info.life_cycle_type && <div><span>Life cycle</span><strong>{planting.species_info.life_cycle_type}</strong></div>}
+              {planting.species_info.harvest_type && <div><span>Harvest type</span><strong>{planting.species_info.harvest_type}</strong></div>}
+            </div>
+          )}
+
           {hasUsdaData && (
             <div className="sg-usda-panel">
-              <div className="sg-usda-title">USDA PLANTS reference</div>
               <div className="sg-usda-rows">
-                {usda.latin_name && <div><span>Latin name</span><strong>{usda.latin_name}</strong></div>}
                 {usda.ph_min != null && usda.ph_max != null && <div><span>Soil pH</span><strong>pH {usda.ph_min}–{usda.ph_max}</strong></div>}
                 {usda.moisture_use && <div><span>Moisture use</span><strong>{usda.moisture_use}</strong></div>}
                 {usda.drought_tolerance && <div><span>Drought tolerance</span><strong>{usda.drought_tolerance}</strong></div>}
@@ -177,7 +179,6 @@ export function PlantDetail({ planting, plantings, containers, events, garden, a
           )}
         </div>
       )}
-
       <QuickActions
         busy={quickBusy}
         onWater={() => runQuick("watering")}
