@@ -108,14 +108,6 @@ export function PlantDetail({ planting, plantings, containers, events, garden, a
         <div><span>Harvests</span><strong>{proj.harvest_count || "—"}</strong></div>
       </div>
 
-      <QuickActions
-        busy={quickBusy}
-        onWater={() => runQuick("watering")}
-        onHarvest={() => runQuick("harvest")}
-        onPhotoClick={() => photoInputRef.current?.click()}
-        onMeasure={() => onRequestManualEntry?.("growth_measurement", planting.id)}
-        onIssue={() => onRequestManualEntry?.("pest_sighting", planting.id)}
-      />
       <input ref={photoInputRef} type="file" accept="image/*" hidden onChange={(e) => { handlePhoto(e.target.files?.[0]); e.target.value = ""; }} />
 
       {container && (
@@ -185,6 +177,15 @@ export function PlantDetail({ planting, plantings, containers, events, garden, a
           )}
         </div>
       )}
+
+      <QuickActions
+        busy={quickBusy}
+        onWater={() => runQuick("watering")}
+        onHarvest={() => runQuick("harvest")}
+        onPhotoClick={() => photoInputRef.current?.click()}
+        onMeasure={() => onRequestManualEntry?.("growth_measurement", planting.id)}
+        onIssue={() => onRequestManualEntry?.("pest_sighting", planting.id)}
+      />
 
       <div className="sg-recent">
         <h2>History</h2>

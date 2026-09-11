@@ -12,11 +12,11 @@ import { Droplets, Camera, Scissors, Ruler, Bug, Plus, Loader2 } from "lucide-re
 // onNewPlant is optional — pass it to show a trailing "New plant" action.
 export function QuickActions({ busy, disabled, onWater, onHarvest, onMeasure, onIssue, onPhotoClick, onNewPlant }) {
   const items = [
-    { id: "watering", label: "Water", icon: Droplets, primary: true, onClick: onWater },
     { id: "photo_log", label: "Photo", icon: Camera, onClick: onPhotoClick },
+    { id: "watering", label: "Water", icon: Droplets, primary: true, onClick: onWater },
     { id: "harvest", label: "Harvest", icon: Scissors, onClick: onHarvest },
-    { id: "growth_measurement", label: "Measure", icon: Ruler, onClick: onMeasure },
     { id: "pest_sighting", label: "Pest / disease", icon: Bug, onClick: onIssue },
+    { id: "growth_measurement", label: "Measure", icon: Ruler, onClick: onMeasure },
   ];
 
   return (
