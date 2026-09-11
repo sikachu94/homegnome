@@ -144,6 +144,12 @@ body,
   border-color: var(--moss);
 }
 
+.sg-chip.active {
+  background: var(--moss);
+  border-color: var(--moss);
+  color: #fff;
+}
+
 .sg-weather-loc {
   display: flex;
   align-items: center;
@@ -1371,83 +1377,6 @@ body,
   font-weight: 600;
 }
 
-/* ---------- Ideal conditions card (species reference on the plant detail page) ---------- */
-.sg-ideal-card {
-  background: var(--panel);
-  border: 1px solid var(--line);
-  border-radius: 14px;
-  padding: 16px 18px;
-  margin: 20px 0;
-}
-
-.sg-ideal-card h2 {
-  margin-bottom: 2px;
-}
-
-.sg-latin-name {
-  display: block;
-  font-style: italic;
-  font-size: 12.5px;
-  color: var(--muted);
-  margin: 0 0 14px;
-}
-
-.sg-ideal-stats {
-  display: flex;
-  gap: 18px;
-  padding-bottom: 14px;
-  border-bottom: 1px solid var(--line);
-  margin-bottom: 12px;
-}
-
-.sg-ideal-stats div {
-  display: flex;
-  flex-direction: column;
-  gap: 2px;
-}
-
-.sg-ideal-stats span {
-  font-size: 11px;
-  color: var(--muted);
-}
-
-.sg-ideal-stats strong {
-  font-size: 14px;
-  font-weight: 600;
-  color: var(--ink);
-}
-
-.sg-ideal-rows {
-  display: flex;
-  flex-direction: column;
-  gap: 6px;
-  font-size: 12.5px;
-}
-
-.sg-ideal-rows div {
-  display: flex;
-  justify-content: space-between;
-  gap: 12px;
-}
-
-.sg-ideal-rows span {
-  color: var(--muted);
-}
-
-.sg-ideal-rows strong {
-  font-weight: 500;
-  text-align: right;
-  text-transform: capitalize;
-}
-
-/* .sg-usda-panel's own margin (defined earlier, under Plant cards) assumes
-   it's living inside .sg-plant-card's zero-padding layout. Here it's inside
-   .sg-ideal-card, which already has its own padding, so drop the horizontal
-   offset — the border-top + heading still keep it visually distinct. */
-.sg-ideal-card .sg-usda-panel {
-  margin: 14px 0 0;
-}
-
 /* ==========================================================================
    Calendar tab (CalendarTab.jsx / GardenCalendar.jsx) — month grid plus a
    day agenda of upcoming watering/harvest tasks generated from each
@@ -1706,4 +1635,159 @@ body,
   padding: 20px 4px;
   text-align: center;
   line-height: 1.6;
+}
+
+/* ==========================================================================
+   Log entry form redesign — the manual-entry card (sg-manual-card,
+   sg-type-chips, sg-target-list, sg-target-row, sg-manual-note, etc.) had
+   no rules anywhere in this file, so it rendered with raw browser defaults:
+   unstyled checkboxes stacked one per line, a native-select row, no
+   spacing rhythm — that's the actual source of "ugly and takes up a lot of
+   the page." It's replaced by a compact row of type chips that expands
+   into a single focused sheet, closed by default.
+   ========================================================================== */
+
+.sg-entry-trigger-row {
+  display: flex;
+  gap: 8px;
+  overflow-x: auto;
+  padding-bottom: 2px;
+  margin-bottom: 4px;
+  scrollbar-width: none;
+}
+
+.sg-entry-trigger-row::-webkit-scrollbar {
+  display: none;
+}
+
+.sg-entry-trigger-chip {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+  flex: 0 0 auto;
+  min-width: 66px;
+  border: 1px solid var(--line);
+  background: var(--panel);
+  border-radius: 12px;
+  padding: 9px 10px 8px;
+  cursor: pointer;
+  font-family: 'Inter', sans-serif;
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--muted);
+}
+
+.sg-entry-trigger-chip.active {
+  border-color: var(--moss);
+  background: var(--canvas);
+  color: var(--moss-dark);
+}
+
+.sg-entry-sheet {
+  background: var(--panel);
+  border: 1px solid var(--line);
+  border-radius: 14px;
+  padding: 14px;
+  margin: 10px 0 18px;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.sg-entry-sheet-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.sg-entry-sheet-head span {
+  font-family: 'Fraunces', serif;
+  font-weight: 600;
+  font-size: 15px;
+  color: var(--ink);
+}
+
+.sg-entry-targets {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.sg-target-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.sg-target-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.sg-select-all {
+  background: none;
+  border: none;
+  color: var(--moss);
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+  padding: 0;
+}
+
+.sg-entry-fields {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
+  gap: 10px;
+}
+
+.sg-entry-field {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--muted);
+}
+
+.sg-entry-field select,
+.sg-entry-field input {
+  border: 1px solid var(--line);
+  border-radius: 7px;
+  padding: 9px 10px;
+  font-size: 16px;
+  font-family: 'Inter', sans-serif;
+  font-weight: 400;
+  background: var(--panel);
+  min-height: 44px;
+  color: var(--ink);
+}
+
+.sg-entry-more {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.sg-entry-submit {
+  width: 100%;
+}
+
+.sg-manual-note {
+  width: 100%;
+  box-sizing: border-box;
+  border: 1px solid var(--line);
+  border-radius: 9px;
+  padding: 10px;
+  font-size: 16px;
+  font-family: 'Inter', sans-serif;
+  resize: vertical;
+  background: var(--panel);
+  color: var(--ink);
+}
+
+.sg-manual-note::placeholder {
+  color: var(--muted);
 }

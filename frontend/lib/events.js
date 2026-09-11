@@ -82,6 +82,7 @@ export const MANUAL_ENTRY_FIELDS = {
     { key: "quantity", label: "Quantity", kind: "number" },
     { key: "unit", label: "Unit", kind: "select", options: ["g", "kg", "pieces"] },
     { key: "quality", label: "Quality", kind: "select", options: ["poor", "fair", "good", "excellent"] },
+    { key: "harvest_method", label: "Method", kind: "select", options: ["hand-picked", "cut", "pulled"] },
   ],
   growth_measurement: [
     { key: "metric", label: "What are you measuring?", kind: "text", placeholder: "e.g. height" },
@@ -175,7 +176,9 @@ export function describeEventPayload(eventType, payload = {}) {
     case "watering":
       return payload.amount_l ? `${payload.amount_l}L${payload.method ? `, by ${payload.method}` : ""}` : payload.method || null;
     case "harvest":
-      return payload.quantity ? `${payload.quantity}${payload.unit ? ` ${payload.unit}` : ""}${payload.quality ? `, ${payload.quality}` : ""}` : payload.quality || null;
+      return payload.quantity
+        ? `${payload.quantity}${payload.unit ? ` ${payload.unit}` : ""}${payload.quality ? `, ${payload.quality}` : ""}${payload.harvest_method ? ` (${payload.harvest_method})` : ""}`
+        : payload.quality || payload.harvest_method || null;
     case "pest_sighting":
       return payload.pest ? `${payload.pest}${payload.severity ? ` · ${payload.severity}` : ""}` : payload.severity || null;
     case "disease_sighting":

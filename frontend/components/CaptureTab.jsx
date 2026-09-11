@@ -1,5 +1,5 @@
 import { useState, useRef, useEffect } from "react";
-import { Mic, Square, Sparkles, Loader2, X, ImagePlus, ChevronDown } from "lucide-react";
+import { Mic, Square, Sparkles, Loader2, X, ImagePlus, ChevronDown, Plus } from "lucide-react";
 import { apiExtract } from "../api.js";
 import {
   scopeOf, buildEvent, labelForEntity, labelForEventType, quickLogEvent, isAlertEvent, describeEventPayload,
@@ -48,6 +48,11 @@ export function CaptureTab({ gardenId, plantings, containers, events, addEvent, 
   const manualFormRef = useRef(null);
 
   // Manual log-entry form state — the primary, non-AI way to log activity.
+  // manualFormOpen/manualMoreOpen keep the form collapsed to a slim trigger
+  // row until someone actually wants to log something, instead of an
+  // always-open card taking up most of the tab.
+  const [manualFormOpen, setManualFormOpen] = useState(false);
+  const [manualMoreOpen, setManualMoreOpen] = useState(false);
   const [manualType, setManualType] = useState("watering");
   const [manualTargets, setManualTargets] = useState(() => new Set());
   const [manualValues, setManualValues] = useState({});
@@ -71,6 +76,27 @@ export function CaptureTab({ gardenId, plantings, containers, events, addEvent, 
     setManualValues({});
     setManualNote("");
     setManualPhoto(null);
+    setManualMoreOpen(false);
+  };
+
+  // Opens the form (if it's collapsed), switches it to the given type, and
+  // optionally scopes it to one plant — the single entry point used by the
+  // trigger chips below, the Measure/Pest quick actions, and cross-tab
+  // requests from a plant's detail page.
+  const openManualEntry = (type, plantingId) => {
+    selectManualType(type);
+    if (plantingId) setManualTargets(new Set([plantingId]));
+    setManualFormOpen(true);
+    requestAnimationFrame(() => manualFormRef.current?.scrollIntoView({ behavior: "smooth", block: "start" }));
+  };
+
+  const closeManualEntry = () => setManualFormOpen(false);
+
+  // Tapping the already-open type's chip again collapses the form, so the
+  // trigger row doubles as an open/close control.
+  const handleTriggerClick = (type) => {
+    if (manualFormOpen && manualType === type) { closeManualEntry(); return; }
+    openManualEntry(type);
   };
 
   // Populate an initial default selection once plantings are available —
@@ -86,9 +112,7 @@ export function CaptureTab({ gardenId, plantings, containers, events, addEvent, 
   // scoped to that one plant instead of the tab's own priority plant.
   useEffect(() => {
     if (!manualEntryRequest) return;
-    selectManualType(manualEntryRequest.type);
-    setManualTargets(new Set([manualEntryRequest.plantingId]));
-    manualFormRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
+    openManualEntry(manualEntryRequest.type, manualEntryRequest.plantingId);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [manualEntryRequest]);
 
@@ -100,6 +124,7 @@ export function CaptureTab({ gardenId, plantings, containers, events, addEvent, 
     setNoteExpanded(false);
     setExpandedDays(new Set(dayGroups.slice(0, 2).map((g) => g.label)));
     selectManualType("watering");
+    setManualFormOpen(false);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [resetSignal]);
 
@@ -153,9 +178,7 @@ export function CaptureTab({ gardenId, plantings, containers, events, addEvent, 
   // payload), so they jump to the manual form pre-scoped to the priority
   // plant instead of firing an event immediately.
   const focusManualEntry = (type) => {
-    selectManualType(type);
-    if (priorityPlanting) setManualTargets(new Set([priorityPlanting.id]));
-    manualFormRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
+    openManualEntry(type, priorityPlanting?.id);
   };
 
   const toggleTarget = (plantingId) => setManualTargets((prev) => {
@@ -196,13 +219,15 @@ export function CaptureTab({ gardenId, plantings, containers, events, addEvent, 
         plantingIds: Array.from(manualTargets),
         payload,
         note: manualNote.trim(),
-        media: manualType === "photo_log" && manualPhoto ? [manualPhoto] : undefined,
+        media: manualPhoto ? [manualPhoto] : undefined,
       });
       await addEvent(built);
       notify(`Logged ${MANUAL_ENTRY_LABELS[manualType].toLowerCase()} for ${built.length} ${built.length === 1 ? "plant" : "plants"}.`);
       setManualValues({});
       setManualNote("");
       setManualPhoto(null);
+      setManualMoreOpen(false);
+      setManualFormOpen(false);
     } catch (err) {
       notify("Couldn't save that — try again.", "error");
     } finally {
@@ -332,98 +357,135 @@ export function CaptureTab({ gardenId, plantings, containers, events, addEvent, 
         </>
       )}
 
-      <div className="sg-manual-card" ref={manualFormRef}>
-        <h2>Log entry</h2>
-        <div className="sg-type-chips">
+      <div className="sg-manual-section" ref={manualFormRef}>
+        <p className="sg-form-label" style={{ margin: "18px 0 8px" }}>Log entry</p>
+
+        <div className="sg-entry-trigger-row">
           {MANUAL_ENTRY_TYPES.map((type) => (
             <button
               key={type}
-              className={`sg-chip${manualType === type ? " active" : ""}`}
-              onClick={() => selectManualType(type)}
+              type="button"
+              className={`sg-entry-trigger-chip${manualFormOpen && manualType === type ? " active" : ""}`}
+              onClick={() => handleTriggerClick(type)}
+              aria-pressed={manualFormOpen && manualType === type}
             >
-              {MANUAL_ENTRY_LABELS[type]}
+              <EventIcon type={type} size={28} />
+              <span>{MANUAL_ENTRY_LABELS[type]}</span>
             </button>
           ))}
         </div>
 
-        <div className="sg-target-header">
-          <span className="sg-form-label">Which plants?</span>
-          {manualType !== "photo_log" && plantings.length > 1 && (
-            <button className="sg-select-all" onClick={selectAllTargets}>Select all</button>
-          )}
-        </div>
-        {plantings.length === 0 ? (
-          <p className="sg-empty">Add a plant first — see the Garden tab.</p>
-        ) : (
-          <div className="sg-target-list">
-            {plantings.map((p) => (
-              <label key={p.id} className="sg-target-row">
-                <input
-                  type={manualType === "photo_log" ? "radio" : "checkbox"}
-                  name="manual-target"
-                  checked={manualTargets.has(p.id)}
-                  onChange={() => toggleTarget(p.id)}
-                />
-                {p.nickname}
-              </label>
-            ))}
-          </div>
-        )}
+        {manualFormOpen && (
+          <div className="sg-entry-sheet">
+            <div className="sg-entry-sheet-head">
+              <span>{MANUAL_ENTRY_LABELS[manualType]}</span>
+              <button className="sg-icon-btn" onClick={closeManualEntry} aria-label="Close log entry form"><X size={16} /></button>
+            </div>
 
-        {MANUAL_ENTRY_FIELDS[manualType].length > 0 && (
-          <div className="sg-draft-row">
-            {MANUAL_ENTRY_FIELDS[manualType].map((field) => (
-              field.kind === "select" ? (
-                <select
-                  key={field.key}
-                  value={manualValues[field.key] || ""}
-                  onChange={(e) => setManualValues((v) => ({ ...v, [field.key]: e.target.value }))}
-                >
-                  <option value="">{field.label}</option>
-                  {field.options.map((opt) => <option key={opt} value={opt}>{opt}</option>)}
-                </select>
+            <div className="sg-entry-targets">
+              <div className="sg-target-header">
+                <span className="sg-form-label">Which plant{manualType !== "photo_log" ? "s" : ""}?</span>
+                {manualType !== "photo_log" && plantings.length > 1 && (
+                  <button className="sg-select-all" onClick={selectAllTargets}>Select all</button>
+                )}
+              </div>
+              {plantings.length === 0 ? (
+                <p className="sg-empty">Add a plant first — see the Garden tab.</p>
               ) : (
-                <input
-                  key={field.key}
-                  type={field.kind}
-                  placeholder={field.placeholder || field.label}
-                  value={manualValues[field.key] || ""}
-                  onChange={(e) => setManualValues((v) => ({ ...v, [field.key]: e.target.value }))}
-                />
-              )
-            ))}
-          </div>
-        )}
+                <div className="sg-target-chips">
+                  {plantings.map((p) => (
+                    <button
+                      key={p.id}
+                      type="button"
+                      className={`sg-chip${manualTargets.has(p.id) ? " active" : ""}`}
+                      aria-pressed={manualTargets.has(p.id)}
+                      onClick={() => toggleTarget(p.id)}
+                    >
+                      {p.nickname}
+                    </button>
+                  ))}
+                </div>
+              )}
+            </div>
 
-        {manualType === "photo_log" && (
-          <div className="sg-draft-row">
-            {manualPhoto ? (
-              <div className="sg-photo-thumb"><img src={manualPhoto} alt="attached" /><button onClick={() => setManualPhoto(null)}><X size={10} /></button></div>
-            ) : (
-              <label className="sg-photo-add wide">
-                <ImagePlus size={13} /> Add a photo
-                <input type="file" accept="image/*" hidden onChange={(e) => attachManualPhoto(e.target.files?.[0])} />
-              </label>
+            {MANUAL_ENTRY_FIELDS[manualType].length > 0 && (
+              <div className="sg-entry-fields">
+                {MANUAL_ENTRY_FIELDS[manualType].map((field) => (
+                  <label key={field.key} className="sg-entry-field">
+                    <span>{field.label}</span>
+                    {field.kind === "select" ? (
+                      <select
+                        value={manualValues[field.key] || ""}
+                        onChange={(e) => setManualValues((v) => ({ ...v, [field.key]: e.target.value }))}
+                      >
+                        <option value="">—</option>
+                        {field.options.map((opt) => <option key={opt} value={opt}>{opt}</option>)}
+                      </select>
+                    ) : (
+                      <input
+                        type={field.kind}
+                        placeholder={field.placeholder || ""}
+                        value={manualValues[field.key] || ""}
+                        onChange={(e) => setManualValues((v) => ({ ...v, [field.key]: e.target.value }))}
+                      />
+                    )}
+                  </label>
+                ))}
+              </div>
             )}
+
+            {manualType === "photo_log" && (
+              <div className="sg-draft-row">
+                {manualPhoto ? (
+                  <div className="sg-photo-thumb"><img src={manualPhoto} alt="attached" /><button onClick={() => setManualPhoto(null)}><X size={10} /></button></div>
+                ) : (
+                  <label className="sg-photo-add wide">
+                    <ImagePlus size={13} /> Add a photo
+                    <input type="file" accept="image/*" hidden onChange={(e) => attachManualPhoto(e.target.files?.[0])} />
+                  </label>
+                )}
+              </div>
+            )}
+
+            {!manualMoreOpen ? (
+              <button className="sg-note-toggle" onClick={() => setManualMoreOpen(true)}>
+                <Plus size={13} /> Add a note{manualType !== "photo_log" ? " or photo" : ""} (optional)
+              </button>
+            ) : (
+              <div className="sg-entry-more">
+                <textarea
+                  className="sg-manual-note"
+                  placeholder="Add a note (optional)"
+                  rows={2}
+                  value={manualNote}
+                  onChange={(e) => setManualNote(e.target.value)}
+                  autoFocus
+                />
+                {manualType !== "photo_log" && (
+                  <div className="sg-draft-row">
+                    {manualPhoto ? (
+                      <div className="sg-photo-thumb"><img src={manualPhoto} alt="attached" /><button onClick={() => setManualPhoto(null)}><X size={10} /></button></div>
+                    ) : (
+                      <label className="sg-photo-add wide">
+                        <ImagePlus size={13} /> Add a photo
+                        <input type="file" accept="image/*" hidden onChange={(e) => attachManualPhoto(e.target.files?.[0])} />
+                      </label>
+                    )}
+                  </div>
+                )}
+              </div>
+            )}
+
+            <button
+              className="sg-primary sg-entry-submit"
+              disabled={manualSaving || manualTargets.size === 0 || (manualType === "photo_log" && !manualPhoto)}
+              onClick={saveManualEntry}
+            >
+              {manualSaving ? <Loader2 className="spin" size={14} /> : null}
+              Log for {manualTargets.size} {manualTargets.size === 1 ? "plant" : "plants"}
+            </button>
           </div>
         )}
-
-        <textarea
-          className="sg-manual-note"
-          placeholder="Add a note (optional)"
-          rows={2}
-          value={manualNote}
-          onChange={(e) => setManualNote(e.target.value)}
-        />
-
-        <button
-          className="sg-primary"
-          disabled={manualSaving || manualTargets.size === 0 || (manualType === "photo_log" && !manualPhoto)}
-          onClick={saveManualEntry}
-        >
-          {manualSaving ? <Loader2 className="spin" size={14} /> : null}
-          Log for {manualTargets.size} {manualTargets.size === 1 ? "plant" : "plants"}
-        </button>
       </div>
 
       {!noteExpanded ? (

@@ -1,4 +1,4 @@
-import { Droplets, Scissors, Bug, CloudRain, Snowflake, Camera, Sparkles } from "lucide-react";
+import { Droplets, Scissors, Bug, CloudRain, Snowflake, Camera, Ruler, Sparkles } from "lucide-react";
 import { isAlertEvent } from "../lib/events.js";
 
 const ICON_BY_TYPE = {
@@ -9,6 +9,7 @@ const ICON_BY_TYPE = {
   rainfall: CloudRain,
   frost: Snowflake,
   photo_log: Camera,
+  growth_measurement: Ruler,
 };
 
 // Which color a given event's stamp gets. Alerts (see isAlertEvent) always
