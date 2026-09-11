@@ -1,12 +1,14 @@
 import React, { useState } from "react";
-import { Sprout, NotebookPen, MessageCircle, RotateCcw, MapPin, CloudRain, Thermometer, Loader as Loader2 } from "lucide-react";
+import { Sprout, NotebookPen, MessageCircle, Calendar, RotateCcw, MapPin, CloudRain, Thermometer, Loader as Loader2 } from "lucide-react";
 import gnomeLogo from "./assets/gnome_only.jpg";
 import "./styles.css";
 import { useGardenData } from "./hooks/useGardenData.js";
+import { LandingPage } from "./components/LandingPage.jsx";
 import { useWeather } from "./hooks/useWeather.js";
 import { PRESET_LOCATIONS } from "./lib/species.js";
 import { CaptureTab } from "./components/CaptureTab.jsx";
 import { PlantsTab } from "./components/PlantsTab.jsx";
+import { CalendarTab } from "./components/CalendarTab.jsx";
 import { ChatTab } from "./components/ChatTab.jsx";
 import { useToast, Toast } from "./lib/toast.jsx";
 
@@ -15,19 +17,20 @@ import { useToast, Toast } from "./lib/toast.jsx";
 const TABS = [
   { id: "capture", icon: NotebookPen, shortLabel: "Log" },
   { id: "plants", icon: Sprout, shortLabel: "Garden" },
+  { id: "calendar", icon: Calendar, shortLabel: "Calendar" },
   { id: "chat", icon: MessageCircle, shortLabel: "Ask" },
 ];
 
 export default function App() {
   const [tab, setTab] = useState("capture");
   const [resetKey, setResetKey] = useState(0);
-  const [openAddPlantSignal, setOpenAddPlantSignal] = useState(0);
-  const [manualEntryRequest, setManualEntryRequest] = useState(null);
   const { toast, showToast } = useToast();
+  const [showLanding, setShowLanding] = useState(true);
 
   const {
-    loaded, loadError, plantings, containers, events, garden, gardenId,
+    loaded, loadError, plantings, containers, events, calendarTasks, garden, gardenId,
     addEvent, addPlanting, addPlantingPhoto,
+    updateCalendarTask, completeCalendarTask,
     updateGardenLocal, updateGardenAndPersist, persistGarden,
     resetDemo: resetGardenData, refresh: refreshGardenData,
   } = useGardenData();
@@ -38,19 +41,9 @@ export default function App() {
     refresh: refreshWeather, reset: resetWeather,
   } = useWeather({ garden, events: events || [], addEvent, updateGardenAndPersist });
 
-  // "New plant" quick action on the Log tab -> switch to Garden and open its
-  // existing add-plant form.
-  const goToAddPlant = () => {
-    setTab("plants");
-    setOpenAddPlantSignal((n) => n + 1);
-  };
-
-  // "Measure" / "Pest or disease" quick action on a plant's zoom-in page ->
-  // switch to the Log tab, pre-scoped to that specific plant.
-  const requestManualEntry = (type, plantingId) => {
-    setTab("capture");
-    setManualEntryRequest((prev) => ({ type, plantingId, nonce: (prev?.nonce || 0) + 1 }));
-  };
+  if (showLanding) {
+    return <LandingPage onGetStarted={() => setShowLanding(false)} />;
+  }
 
   const resetDemo = async () => {
     try {
@@ -127,15 +120,15 @@ export default function App() {
       )}
 
 
-      {/* All three tabs stay mounted (toggled with `hidden`, not unmounted via
+      {/* All tabs stay mounted (toggled with `hidden`, not unmounted via
           `&&`) so in-progress state -- the capture note/drafts, the chat
-          thread, the add-planting form -- survives switching tabs. */}
+          thread, the add-planting form, the calendar's selected month/day --
+          survives switching tabs. */}
       <main className="sg-main">
         <div hidden={tab !== "capture"}>
           <CaptureTab
             gardenId={gardenId} plantings={plantings} containers={containers} events={events}
             addEvent={addEvent} resetSignal={resetKey} showToast={showToast} weather={weather}
-            onNewPlant={goToAddPlant} manualEntryRequest={manualEntryRequest}
           />
         </div>
         <div hidden={tab !== "plants"}>
@@ -145,7 +138,12 @@ export default function App() {
             weather={weather}
             updateGardenLocal={updateGardenLocal} updateGardenAndPersist={updateGardenAndPersist}
             persistGarden={persistGarden} showToast={showToast}
-            openAddSignal={openAddPlantSignal} onRequestManualEntry={requestManualEntry}
+          />
+        </div>
+        <div hidden={tab !== "calendar"}>
+          <CalendarTab
+            plantings={plantings} events={events}
+            calendarTasks={calendarTasks} onUpdateTask={updateCalendarTask} onCompleteTask={completeCalendarTask}
           />
         </div>
         <div hidden={tab !== "chat"}>
