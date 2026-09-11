@@ -1,16 +1,17 @@
 import { useState, useEffect } from "react";
 import { Plus, X, ImagePlus, ChevronDown, ChevronUp } from "lucide-react";
-import { PHENOPHASES, PHENOPHASE_LABELS, ACQUISITION, ACQUISITION_LABELS, CONTAINER_TYPES, CONTAINER_TYPE_LABELS, CONTAINER_MATERIALS, GARDEN_TYPES, GARDEN_TYPE_LABELS, SPECIES_META } from "../lib/species.js";
+import { PHENOPHASES, PHENOPHASE_LABELS, ACQUISITION, ACQUISITION_LABELS, CONTAINER_TYPES, CONTAINER_TYPE_LABELS, CONTAINER_MATERIALS, GARDEN_TYPES, GARDEN_TYPE_LABELS } from "../lib/species.js";
 import { uid, fmtDate } from "../lib/format.js";
 import { fileToDataUrl } from "../lib/imageUtils.js";
 import { PlantCard } from "./PlantCard.jsx";
 import { PlantDetail } from "./PlantDetail.jsx";
 import { Reminders } from "./Reminders.jsx";
 import { buildReminders } from "../lib/reminders.js";
+import { PlantSearch } from "./PlantSearch.jsx";
 
 const blankSoilRow = () => ({ id: uid("soil"), component: "", percent: 0 });
 const blankNewPlanting = () => ({
-  nickname: "", species: "Tomato", entry_stage: "seedling", acquisition_source: "purchased_seedling",
+  nickname: "", species: "", plant: null, entry_stage: "seedling", acquisition_source: "purchased_seedling",
   containerMode: "new", containerId: "", containerType: "pot", material: "terracotta", containerSize: "", placement: "",
   soilComposition: [{ id: uid("soil"), component: "Potting mix", percent: 100 }],
   photo: null,
@@ -46,6 +47,7 @@ export function PlantsTab({ garden, plantings, containers, events, addPlanting, 
 
   const handleCreatePlanting = async () => {
     if (!newPlanting.nickname.trim()) return;
+    if (!newPlanting.plant) return;
     if (newPlanting.containerMode === "existing" && !newPlanting.containerId) return;
     await addPlanting(newPlanting);
     setNewPlanting(blankNewPlanting());
@@ -121,9 +123,7 @@ export function PlantsTab({ garden, plantings, containers, events, addPlanting, 
       {showAddForm && (
         <div className="sg-draft-card">
           <input placeholder="What did you name it? e.g. Balcony tomato" value={newPlanting.nickname} onChange={(e) => setNewPlanting((n) => ({ ...n, nickname: e.target.value }))} />
-          <div className="sg-draft-row">
-            <select value={newPlanting.species} onChange={(e) => setNewPlanting((n) => ({ ...n, species: e.target.value }))}>{Object.keys(SPECIES_META).map((s) => <option key={s} value={s}>{s}</option>)}</select>
-          </div>
+          <PlantSearch value={newPlanting.plant} onChange={(plant) => setNewPlanting((n) => ({ ...n, plant, species: plant?.plant_name || "" }))} />
 
           <div className="sg-draft-row">
             <select value={newPlanting.containerMode} onChange={(e) => setNewPlanting((n) => ({ ...n, containerMode: e.target.value, containerId: e.target.value === "existing" ? (n.containerId || containers[0]?.id || "") : "" }))}>
@@ -196,7 +196,7 @@ export function PlantsTab({ garden, plantings, containers, events, addPlanting, 
             </div>
           )}
 
-          <button className="sg-primary sm" onClick={handleCreatePlanting}>Add to garden</button>
+          <button className="sg-primary sm" onClick={handleCreatePlanting} disabled={!newPlanting.plant}>Add to garden</button>
         </div>
       )}
 

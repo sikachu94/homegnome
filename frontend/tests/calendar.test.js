@@ -1,6 +1,7 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 import { generateCalendarTasks, getMonthDays, groupCalendarItems } from "../lib/calendar.js";
+import { buildPlantSearchQuery, plantSearchLabel } from "../lib/plantSearch.js";
 
 const planting = { id: "p1", species: "Tomato", nickname: "Balcony tomato", started_at: "2026-09-01T10:00:00.000Z" };
 const setup = { entity_type: "planting", entity_id: "p1", event_type: "planting_setup", timestamp: "2026-09-01T10:00:00.000Z", payload: { entry_stage: "seedling" } };
@@ -43,4 +44,18 @@ test("groups tasks and logged events by local calendar date", () => {
 test("returns a six-week month grid", () => {
   const days = getMonthDays(new Date("2026-09-15T12:00:00.000Z"));
   assert.equal(days.length, 42);
+});
+
+test("builds a case-insensitive USDA catalog search", () => {
+  assert.deepEqual(buildPlantSearchQuery("tom"), {
+    search: "%tom%",
+    limit: 20,
+  });
+});
+
+test("formats a catalog result with its common and scientific names", () => {
+  assert.equal(
+    plantSearchLabel({ plant_name: "tomato", latin_name: "Solanum lycopersicum", usda_symbol: "SOLY2" }),
+    "tomato · Solanum lycopersicum · SOLY2",
+  );
 });
