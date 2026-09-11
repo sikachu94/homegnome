@@ -12,6 +12,13 @@ export const EVENT_TYPES = {
   rainfall: { category: "measurement", scope: "garden", fields: "amount_mm" },
   frost: { category: "observation", scope: "garden", fields: "severity?" },
 };
+EVENT_TYPES.garden_note = { category: "observation", scope: "garden", fields: "note" };
+
+EVENT_TYPE_LABELS.garden_note = "Garden note";
+
+MANUAL_ENTRY_TYPES.push("garden_note");
+MANUAL_ENTRY_LABELS.garden_note = "Garden note";
+MANUAL_ENTRY_FIELDS.garden_note = [];
 
 export const scopeOf = (eventType) => EVENT_TYPES[eventType]?.scope || "planting";
 
@@ -196,12 +203,30 @@ export function describeEventPayload(eventType, payload = {}) {
 
 /** Human-readable label for an event's subject, for the recent-log list. */
 export function labelForEntity(event, plantings, containers) {
-  if (event.entity_type === "garden") return "Weather";
-  if (event.entity_type === "container") {
+    if (event.entity_type === "garden") return "Garden";
+    if (event.entity_type === "container") {
     const container = containers.find((item) => item.id === event.entity_id);
     if (!container) return "Unknown container";
     const typedName = [container.material, container.type, "container"].filter(Boolean).join(" ");
     return typedName || container.name || "Unknown container";
   }
   return plantings.find((planting) => planting.id === event.entity_id)?.nickname || "Unknown planting";
+}
+
+export function buildManualEvents({ eventType, gardenId, plantingIds, payload = {}, note, media }) {
+  const meta = EVENT_TYPES[eventType];
+  if (scopeOf(eventType) === "garden") {
+    return [{
+      id: uid("evt"), timestamp: new Date().toISOString(), garden_id: gardenId,
+      entity_type: "garden", entity_id: gardenId,
+      category: meta?.category || "observation", source: "self", event_type: eventType,
+      payload, note: note || undefined, media: media?.length ? media : undefined, confidence: "observed",
+    }];
+  }
+  return plantingIds.map((plantingId) => ({
+    id: uid("evt"), timestamp: new Date().toISOString(), garden_id: gardenId,
+    entity_type: "planting", entity_id: plantingId,
+    category: meta?.category || "action", source: "self", event_type: eventType,
+    payload, note: note || undefined, media: media?.length ? media : undefined, confidence: "observed",
+  }));
 }

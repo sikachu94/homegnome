@@ -14,16 +14,16 @@ export const ACQUISITION_LABELS = {
 
 export const CONTAINER_TYPES = ["pot", "raised_bed", "in_ground", "hanging_basket", "window_box", "vertical_planter", "grow_bag"];
 export const CONTAINER_MATERIALS = ["terracotta", "plastic", "wood", "metal", "fabric", "ground"];
-export const GARDEN_TYPES = ["balcony", "backyard", "rooftop", "indoor", "community_plot", "greenhouse"];
-
-export const CONTAINER_TYPE_LABELS = {
-  pot: "Pot", raised_bed: "Raised bed", in_ground: "In ground", hanging_basket: "Hanging basket",
-  window_box: "Window box", vertical_planter: "Vertical planter", grow_bag: "Grow bag",
-};
+// frontend/lib/species.js
+export const GARDEN_TYPES = ["balcony", "backyard", "rooftop", "indoor", "community_plot", "greenhouse", "whole_house"];
 
 export const GARDEN_TYPE_LABELS = {
   balcony: "Balcony", backyard: "Backyard", rooftop: "Rooftop", indoor: "Indoor",
-  community_plot: "Community plot", greenhouse: "Greenhouse",
+  community_plot: "Community plot", greenhouse: "Greenhouse", whole_house: "Whole house",
+};
+export const CONTAINER_TYPE_LABELS = {
+  pot: "Pot", raised_bed: "Raised bed", in_ground: "In ground", hanging_basket: "Hanging basket",
+  window_box: "Window box", vertical_planter: "Vertical planter", grow_bag: "Grow bag",
 };
 
 export const PRESET_LOCATIONS = [

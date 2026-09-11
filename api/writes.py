@@ -35,7 +35,42 @@ class GardenUpdate(BaseModel):
     type: str | None = None
     location: dict[str, float] | None = None
     notes: str | None = None
+# api/writes.py — add near GardenUpdate
 
+class GardenCreate(BaseModel):
+    name: str = Field(min_length=1, max_length=200)
+    type: str = "balcony"
+    notes: str | None = None
+
+
+@router.post("/api/gardens", status_code=201)
+def create_garden(payload: GardenCreate, user_id: str = Depends(get_current_user), db = Depends(get_db)):
+    record = {**payload.model_dump(exclude_unset=True), "user_id": user_id}
+    result = db.table("gardens").insert([record]).execute()
+    if not result.data:
+        raise HTTPException(status_code=502, detail="Garden could not be created")
+    return {"garden": {**result.data[0], "plantings": [], "containers": [], "events": []}}
+
+
+@router.delete("/api/gardens/{garden_id}", status_code=200)
+def delete_garden(garden_id: str, user_id: str = Depends(get_current_user), db = Depends(get_db)):
+    verify_garden_ownership(db, garden_id, user_id)
+
+    remaining = db.table("gardens").select("id").eq("user_id", user_id).execute()
+    if len(remaining.data) <= 1:
+        raise HTTPException(status_code=422, detail="You must keep at least one garden")
+
+    plantings = db.table("plantings").select("id").eq("garden_id", garden_id).limit(1).execute()
+    containers = db.table("containers").select("id").eq("garden_id", garden_id).limit(1).execute()
+    if plantings.data or containers.data:
+        raise HTTPException(
+            status_code=409,
+            detail="This garden still has plants or containers in it. Remove them before deleting the garden.",
+        )
+
+    db.table("garden_events").delete().eq("garden_id", garden_id).execute()
+    db.table("gardens").delete().eq("id", garden_id).execute()
+    return {"deleted": garden_id}
 
 def _insert(db, table: str, record: dict[str, Any]) -> dict[str, Any]:
     result = db.table(table).insert([record]).execute()

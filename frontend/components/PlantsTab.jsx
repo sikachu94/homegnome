@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { Plus, X, ImagePlus, ChevronDown, ChevronUp } from "lucide-react";
+import { Plus, X, ImagePlus, ChevronDown, ChevronUp, Trash2, Loader2 } from "lucide-react";
 import { PHENOPHASES, PHENOPHASE_LABELS, ACQUISITION, ACQUISITION_LABELS, CONTAINER_TYPES, CONTAINER_TYPE_LABELS, CONTAINER_MATERIALS, GARDEN_TYPES, GARDEN_TYPE_LABELS } from "../lib/species.js";
 import { uid, fmtDate } from "../lib/format.js";
 import { fileToDataUrl } from "../lib/imageUtils.js";
@@ -17,12 +17,79 @@ const blankNewPlanting = () => ({
   photo: null,
 });
 
-export function PlantsTab({ garden, plantings, containers, events, addPlanting, addPlantingPhoto, addEvent, weather, updateGardenLocal, updateGardenAndPersist, persistGarden, showToast, openAddSignal, onRequestManualEntry }) {
+export function PlantsTab({ garden, allGardens = [], onSwitchGarden, onCreateGarden, onDeleteGarden, plantings, containers, events, addPlanting, addPlantingPhoto, addEvent, weather, updateGardenAndPersist, showToast, openAddSignal, onRequestManualEntry }) {
   const [showAddForm, setShowAddForm] = useState(false);
   const [showAdvanced, setShowAdvanced] = useState(false);
   const [newPlanting, setNewPlanting] = useState(blankNewPlanting());
   const [selectedPlantingId, setSelectedPlantingId] = useState(null);
+  const [draftName, setDraftName] = useState(garden?.name || "");
+  const [draftType, setDraftType] = useState(garden?.type || "balcony");
+  const [draftNotes, setDraftNotes] = useState(garden?.notes || "");
+  const [savingDetails, setSavingDetails] = useState(false);
+  const [detailsError, setDetailsError] = useState(null);
 
+  useEffect(() => {
+    setDraftName(garden?.name || "");
+    setDraftType(garden?.type || "balcony");
+    setDraftNotes(garden?.notes || "");
+  }, [garden?.id]);
+
+  const detailsDirty =
+    draftName !== (garden?.name || "") ||
+    draftType !== (garden?.type || "balcony") ||
+    draftNotes !== (garden?.notes || "");
+
+  const saveGardenDetails = async () => {
+    if (!detailsDirty) return;
+    setSavingDetails(true);
+    setDetailsError(null);
+    try {
+      await updateGardenAndPersist({ name: draftName.trim() || "My garden", type: draftType, notes: draftNotes });
+      showToast?.("Garden details saved.");
+    } catch (err) {
+      setDetailsError("Couldn't save — try again.");
+    } finally {
+      setSavingDetails(false);
+    }
+  };
+
+  const [showAddGarden, setShowAddGarden] = useState(false);
+  const [newGardenName, setNewGardenName] = useState("");
+  const [newGardenType, setNewGardenType] = useState("balcony");
+  const [creatingGarden, setCreatingGarden] = useState(false);
+
+  const handleCreateGarden = async () => {
+    if (!newGardenName.trim()) return;
+    setCreatingGarden(true);
+    try {
+      await onCreateGarden({ name: newGardenName.trim(), type: newGardenType });
+      setNewGardenName(""); setNewGardenType("balcony"); setShowAddGarden(false);
+      showToast?.("Garden created.");
+    } catch (err) {
+      showToast?.("Couldn't create that garden — try again.", "error");
+    } finally {
+      setCreatingGarden(false);
+    }
+  };
+
+  const [deleteConfirming, setDeleteConfirming] = useState(false);
+  const [deletingGarden, setDeletingGarden] = useState(false);
+  const [deleteError, setDeleteError] = useState(null);
+
+  const handleConfirmDelete = async () => {
+    setDeletingGarden(true);
+    setDeleteError(null);
+    try {
+      await onDeleteGarden(garden.id);
+      showToast?.("Garden deleted.");
+      setDeleteConfirming(false);
+    } catch (err) {
+      const match = /"detail":"([^"]+)"/.exec(err.message || "");
+      setDeleteError(match ? match[1] : "Couldn't delete this garden — try again.");
+    } finally {
+      setDeletingGarden(false);
+    }
+  };
   // Guards against a dead-end detail view if the selected planting is ever
   // removed out from under it (e.g. after a demo reset).
   useEffect(() => {
@@ -92,14 +159,58 @@ export function PlantsTab({ garden, plantings, containers, events, addPlanting, 
       <h1></h1>
 
       <div className="sg-garden-overview">
+        <div className="sg-garden-switcher">
+          <select value={garden?.id || ""} onChange={(e) => onSwitchGarden(e.target.value)}>
+            {allGardens.map((g) => <option key={g.id} value={g.id}>{g.name || "Unnamed garden"}</option>)}
+          </select>
+          <button className="sg-secondary sm" onClick={() => setShowAddGarden((s) => !s)}>
+            <Plus size={13} /> New garden
+          </button>
+          <button
+            className="sg-icon-btn"
+            onClick={() => setDeleteConfirming(true)}
+            disabled={allGardens.length <= 1}
+            aria-label="Delete this garden"
+            title={allGardens.length <= 1 ? "You need at least one garden" : "Delete this garden"}
+          >
+            <Trash2 size={15} />
+          </button>
+        </div>
+
+        {showAddGarden && (
+          <div className="sg-draft-card">
+            <div className="sg-draft-row">
+              <input placeholder="New garden name" value={newGardenName} onChange={(e) => setNewGardenName(e.target.value)} />
+              <select value={newGardenType} onChange={(e) => setNewGardenType(e.target.value)}>
+                {GARDEN_TYPES.map((t) => <option key={t} value={t}>{GARDEN_TYPE_LABELS[t]}</option>)}
+              </select>
+            </div>
+            <button className="sg-primary sm" disabled={!newGardenName.trim() || creatingGarden} onClick={handleCreateGarden}>
+              {creatingGarden ? <Loader2 className="spin" size={12} /> : null} Create garden
+            </button>
+          </div>
+        )}
+
+        {deleteConfirming && (
+          <div className="sg-draft-card sg-garden-delete-confirm">
+            <p>Delete "{garden?.name}"? This can't be undone.</p>
+            {deleteError && <div className="sg-error">{deleteError}</div>}
+            <div className="sg-draft-row">
+              <button className="sg-secondary sm" onClick={() => setDeleteConfirming(false)}>Cancel</button>
+              <button className="sg-primary sm" disabled={deletingGarden} onClick={handleConfirmDelete}>
+                {deletingGarden ? <Loader2 className="spin" size={12} /> : null} Delete
+              </button>
+            </div>
+          </div>
+        )}
+
         <div className="sg-garden-row">
-          <input className="sg-garden-name" value={garden?.name || ""} placeholder="Garden name"
-            onChange={(e) => updateGardenLocal({ name: e.target.value })}
-            onBlur={() => persistGarden(garden)} />
-          <select value={garden?.type || "balcony"} onChange={(e) => updateGardenAndPersist({ type: e.target.value })}>
+          <input className="sg-garden-name" value={draftName} placeholder="Garden name" onChange={(e) => setDraftName(e.target.value)} />
+          <select value={draftType} onChange={(e) => setDraftType(e.target.value)}>
             {GARDEN_TYPES.map((t) => <option key={t} value={t}>{GARDEN_TYPE_LABELS[t]}</option>)}
           </select>
         </div>
+
         <div className="sg-garden-stats">
           <div><span>Plants</span><strong>{plantings.length}</strong></div>
           <div><span>Containers</span><strong>{containers.length}</strong></div>
@@ -107,8 +218,21 @@ export function PlantsTab({ garden, plantings, containers, events, addPlanting, 
           <div><span>Location</span><strong>{garden?.label || "Not set"}</strong></div>
           <div><span>Hardiness zone</span><strong>{garden?.hardiness_zone ? `Zone ${garden.hardiness_zone}` : "Not available"}</strong></div>
         </div>
+
         <textarea className="sg-garden-notes" rows={2} placeholder="Notes about the garden — microclimate, common pests, anything gnome should know."
-          value={garden?.notes || ""} onChange={(e) => updateGardenLocal({ notes: e.target.value })} onBlur={() => persistGarden(garden)} />
+          value={draftNotes} onChange={(e) => setDraftNotes(e.target.value)} />
+
+        {detailsDirty && (
+          <div className="sg-draft-row">
+            <button className="sg-secondary sm" onClick={() => { setDraftName(garden?.name || ""); setDraftType(garden?.type || "balcony"); setDraftNotes(garden?.notes || ""); }}>
+              Discard
+            </button>
+            <button className="sg-primary sm" disabled={savingDetails} onClick={saveGardenDetails}>
+              {savingDetails ? <Loader2 className="spin" size={12} /> : null} Save changes
+            </button>
+          </div>
+        )}
+        {detailsError && <div className="sg-error">{detailsError}</div>}
       </div>
 
       {plantings.length > 0 && (

@@ -29,11 +29,13 @@ export default function App() {
 
   const {
     loaded, loadError, plantings, containers, events, calendarTasks, garden, gardenId,
+    allGardens, switchGarden, createGarden, deleteGarden,
     addEvent, addPlanting, addPlantingPhoto,
     updateCalendarTask, completeCalendarTask,
     updateGardenLocal, updateGardenAndPersist, persistGarden,
     resetDemo: resetGardenData, refresh: refreshGardenData,
   } = useGardenData();
+
 
   const {
     weather, weatherError, locating,
@@ -134,7 +136,9 @@ export default function App() {
         </div>
         <div hidden={tab !== "plants"}>
           <PlantsTab
-            garden={garden} plantings={plantings} containers={containers} events={events}
+            garden={garden} allGardens={allGardens}
+            onSwitchGarden={switchGarden} onCreateGarden={createGarden} onDeleteGarden={deleteGarden}
+            plantings={plantings} containers={containers} events={events}
             addPlanting={addPlanting} addPlantingPhoto={addPlantingPhoto} addEvent={addEvent}
             weather={weather}
             updateGardenLocal={updateGardenLocal} updateGardenAndPersist={updateGardenAndPersist}

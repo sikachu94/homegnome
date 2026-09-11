@@ -3,7 +3,7 @@ import { storageGet, storageSet } from "../lib/storage.js";
 import { uid } from "../lib/format.js";
 import { fileToDataUrl } from "../lib/imageUtils.js";
 import { GARDEN_ID, DEFAULT_GARDEN } from "../lib/seedData.js";
-import { apiGardens, apiCreateEvent, apiCreatePlanting, apiUpdateGarden } from "../api.js";
+import { apiGardens, apiCreateEvent, apiCreatePlanting, apiUpdateGarden, apiCreateGarden, apiDeleteGarden } from "../api.js";
 
 /**
  * Owns plantings/containers/events/garden state and their persistence.
@@ -19,6 +19,8 @@ export function useGardenData() {
   const [gardenId, setGardenId] = useState(GARDEN_ID);
   const [loaded, setLoaded] = useState(false);
   const [loadError, setLoadError] = useState(null);
+  const [allGardens, setAllGardens] = useState([]);
+
 
   const persist = useCallback(async (nextPlantings, nextEvents, nextContainers) => {
     try {
@@ -78,14 +80,21 @@ export function useGardenData() {
   }, []);
 
   const updateGardenAndPersist = useCallback((patch) => {
-    setGarden((g) => {
-      const next = { ...(g || DEFAULT_GARDEN), ...patch };
-      apiUpdateGarden(gardenId, patch)
-        .then(({ garden: saved }) => persistGarden({ ...saved, label: saved.label || saved.name }))
-        .catch((err) => console.error("Garden update failed", err));
-      return next;
-    });
+    setGarden((g) => ({ ...(g || DEFAULT_GARDEN), ...patch }));
+    return apiUpdateGarden(gardenId, patch)
+      .then(({ garden: saved }) => {
+        const full = { ...saved, label: saved.label || saved.name };
+        setGarden((g) => ({ ...(g || DEFAULT_GARDEN), ...full }));
+        setAllGardens((prev) => prev.map((g) => (g.id === gardenId ? { ...g, ...saved } : g)));
+        persistGarden(full);
+        return full;
+      })
+      .catch((err) => {
+        console.error("Garden update failed", err);
+        throw err;
+      });
   }, [gardenId, persistGarden]);
+
 
   /** Appends one event or an array of events, then persists. */
   const addEvent = useCallback(async (eventOrEvents) => {
@@ -180,12 +189,41 @@ export function useGardenData() {
     await applyGarden(remoteGarden);
     setLoadError(null);
   }, [applyGarden, gardenId]);
+  
+const switchGarden = useCallback(async (targetId) => {
+    const target = allGardens.find((item) => item.id === targetId);
+    if (!target) return;
+    await applyGarden(target);
+  }, [allGardens, applyGarden]);
+
+  const createGarden = useCallback(async (form) => {
+    await apiCreateGarden({
+      name: form.name?.trim() || "New garden",
+      type: form.type || "balcony",
+      notes: form.notes || undefined,
+    });
+    const response = await apiGardens();
+    const list = response.gardens || [];
+    setAllGardens(list);
+    const created = list[list.length - 1]; // newest; fine since we just created it and nothing else changed the set
+    await applyGarden(created);
+    return created;
+  }, [applyGarden]);
+
+  const deleteGarden = useCallback(async (targetId) => {
+    await apiDeleteGarden(targetId);
+    const response = await apiGardens();
+    const list = response.gardens || [];
+    setAllGardens(list);
+    if (targetId === gardenId && list[0]) await applyGarden(list[0]);
+  }, [applyGarden, gardenId]);
 
   return {
     loaded, loadError, plantings, containers, events, calendarTasks, garden, gardenId,
     addEvent, addPlanting, addPlantingPhoto,
     updateCalendarTask, completeCalendarTask,
     updateGardenLocal, updateGardenAndPersist, persistGarden,
+    allGardens, switchGarden, createGarden, deleteGarden,
     resetDemo,
     refresh,
   };

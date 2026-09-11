@@ -8,7 +8,6 @@ import {
 import { uid, fmtTime, groupByDay } from "../lib/format.js";
 import { fileToDataUrl } from "../lib/imageUtils.js";
 import { EventIcon } from "./EventIcon.jsx";
-import { QuickActions } from "./QuickActions.jsx";
 import { Reminders } from "./Reminders.jsx";
 import { buildReminders, pickPriorityPlanting } from "../lib/reminders.js";
 
@@ -205,6 +204,9 @@ export function CaptureTab({ gardenId, plantings, containers, events, addEvent, 
     if (!manualTargets.size) return;
     if (manualType === "photo_log" && !manualPhoto) return;
     setManualSaving(true);
+    const gardenScoped = scopeOf(manualType) === "garden";
+    if (!gardenScoped && !manualTargets.size) return;
+    if (manualType === "photo_log" && !manualPhoto) return;
     try {
       const fields = MANUAL_ENTRY_FIELDS[manualType] || [];
       const payload = {};
@@ -233,6 +235,18 @@ export function CaptureTab({ gardenId, plantings, containers, events, addEvent, 
     } finally {
       setManualSaving(false);
     }
+    const built = buildManualEvents({
+      eventType: manualType,
+      gardenId,
+      plantingIds: gardenScoped ? [] : Array.from(manualTargets),
+      payload,
+      note: manualNote.trim(),
+      media: manualPhoto ? [manualPhoto] : undefined,
+    });
+    await addEvent(built);
+    notify(gardenScoped ? "Logged for the whole garden." : `Logged ${MANUAL_ENTRY_LABELS[manualType].toLowerCase()} for ${built.length} ${built.length === 1 ? "plant" : "plants"}.`);
+
+
   };
 
   const speechSupported = typeof window !== "undefined" && (window.SpeechRecognition || window.webkitSpeechRecognition);
@@ -339,24 +353,6 @@ export function CaptureTab({ gardenId, plantings, containers, events, addEvent, 
         </div>
       )}
 
-      {plantings.length > 0 && (
-        <>
-          <p className="sg-form-label" style={{ margin: "18px 0 8px" }}>Quick actions</p>
-          <QuickActions
-            busy={quickBusy}
-            disabled={!priorityPlanting}
-            onWater={() => runQuickAction("watering")}
-            onHarvest={() => runQuickAction("harvest")}
-            onPhotoClick={() => photoInputRef.current?.click()}
-            onMeasure={() => focusManualEntry("growth_measurement")}
-            onIssue={() => focusManualEntry("pest_sighting")}
-            onNewPlant={onNewPlant}
-          />
-          <input ref={photoInputRef} type="file" accept="image/*" hidden onChange={(e) => { handleQuickPhoto(e.target.files?.[0]); e.target.value = ""; }} />
-          {priorityPlanting && <p className="sg-quick-hint">Water/Harvest/Photo target {priorityPlanting.nickname} — whichever plant needs it most right now. Measure and Pest/disease open the form below so you can pick any plant(s) and fill in details.</p>}
-        </>
-      )}
-
       <div className="sg-manual-section" ref={manualFormRef}>
         <p className="sg-form-label" style={{ margin: "18px 0 8px" }}>Log entry</p>
 
@@ -381,32 +377,33 @@ export function CaptureTab({ gardenId, plantings, containers, events, addEvent, 
               <span>{MANUAL_ENTRY_LABELS[manualType]}</span>
               <button className="sg-icon-btn" onClick={closeManualEntry} aria-label="Close log entry form"><X size={16} /></button>
             </div>
-
-            <div className="sg-entry-targets">
-              <div className="sg-target-header">
-                <span className="sg-form-label">Which plant{manualType !== "photo_log" ? "s" : ""}?</span>
-                {manualType !== "photo_log" && plantings.length > 1 && (
-                  <button className="sg-select-all" onClick={selectAllTargets}>Select all</button>
+            {scopeOf(manualType) !== "garden" && (
+              <div className="sg-entry-targets">
+                <div className="sg-target-header">
+                  <span className="sg-form-label">Which plant{manualType !== "photo_log" ? "s" : ""}?</span>
+                  {manualType !== "photo_log" && plantings.length > 1 && (
+                    <button className="sg-select-all" onClick={selectAllTargets}>Select all</button>
+                  )}
+                </div>
+                {plantings.length === 0 ? (
+                  <p className="sg-empty">Add a plant first — see the Garden tab.</p>
+                ) : (
+                  <div className="sg-target-chips">
+                    {plantings.map((p) => (
+                      <button
+                        key={p.id}
+                        type="button"
+                        className={`sg-chip${manualTargets.has(p.id) ? " active" : ""}`}
+                        aria-pressed={manualTargets.has(p.id)}
+                        onClick={() => toggleTarget(p.id)}
+                      >
+                        {p.nickname}
+                      </button>
+                    ))}
+                  </div>
                 )}
               </div>
-              {plantings.length === 0 ? (
-                <p className="sg-empty">Add a plant first — see the Garden tab.</p>
-              ) : (
-                <div className="sg-target-chips">
-                  {plantings.map((p) => (
-                    <button
-                      key={p.id}
-                      type="button"
-                      className={`sg-chip${manualTargets.has(p.id) ? " active" : ""}`}
-                      aria-pressed={manualTargets.has(p.id)}
-                      onClick={() => toggleTarget(p.id)}
-                    >
-                      {p.nickname}
-                    </button>
-                  ))}
-                </div>
-              )}
-            </div>
+            )}
 
             {MANUAL_ENTRY_FIELDS[manualType].length > 0 && (
               <div className="sg-entry-fields">
@@ -478,7 +475,7 @@ export function CaptureTab({ gardenId, plantings, containers, events, addEvent, 
 
             <button
               className="sg-primary sg-entry-submit"
-              disabled={manualSaving || manualTargets.size === 0 || (manualType === "photo_log" && !manualPhoto)}
+              disabled={manualSaving || (scopeOf(manualType) !== "garden" && manualTargets.size === 0) || (manualType === "photo_log" && !manualPhoto)}
               onClick={saveManualEntry}
             >
               {manualSaving ? <Loader2 className="spin" size={14} /> : null}

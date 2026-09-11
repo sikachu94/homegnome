@@ -50,6 +50,17 @@ async function getJSON(path) {
   return res.json();
 }
 
+
+async function deleteJSON(path) {
+  const headers = await authHeader();
+  const res = await fetch(`${BASE}${path}`, { method: "DELETE", headers });
+  if (!res.ok) {
+    const detail = await res.text().catch(() => "");
+    throw new Error(`${path} failed (${res.status}): ${detail}`);
+  }
+  return res.json();
+}
+
 /**
  * POST /api/chat (api/chat.py)
  * messages: [{ role: "user" | "assistant", content: string }]
@@ -87,4 +98,13 @@ export function apiCreateEvent(gardenId, event) {
 
 export function apiUpdateGarden(gardenId, patch) {
   return patchJSON(`/api/gardens/${gardenId}`, patch);
+}
+
+
+export function apiCreateGarden(garden) {
+  return postJSON("/api/gardens", garden);
+}
+
+export function apiDeleteGarden(gardenId) {
+  return deleteJSON(`/api/gardens/${gardenId}`);
 }
