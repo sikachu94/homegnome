@@ -170,9 +170,12 @@ export function PlantDetail({ planting, plantings, containers, events, garden, a
             <div className="sg-usda-panel">
               <div className="sg-usda-rows">
                 {usda.ph_min != null && usda.ph_max != null && <div><span>Soil pH</span><strong>pH {usda.ph_min}–{usda.ph_max}</strong></div>}
+                {usda.precipitation_min_in != null && usda.precipitation_max_in != null && <div><span>Annual precipitation</span><strong>{usda.precipitation_min_in}–{usda.precipitation_max_in} in/yr</strong></div>}
                 {usda.moisture_use && <div><span>Moisture use</span><strong>{usda.moisture_use}</strong></div>}
                 {usda.drought_tolerance && <div><span>Drought tolerance</span><strong>{usda.drought_tolerance}</strong></div>}
+                {usda.shade_tolerance && <div><span>Shade tolerance</span><strong>{usda.shade_tolerance}</strong></div>}
                 {usda.growth_habit && <div><span>Growth habit</span><strong>{usda.growth_habit}</strong></div>}
+                {usda.bloom_period && <div><span>Bloom period</span><strong>{usda.bloom_period}</strong></div>}
               </div>
               {usda.usda_source_url && <a className="sg-usda-source" href={usda.usda_source_url} target="_blank" rel="noreferrer">Source: USDA PLANTS Database</a>}
             </div>
