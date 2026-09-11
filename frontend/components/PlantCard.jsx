@@ -1,5 +1,5 @@
 import { Box, Layers, MapPin, Bug, ImagePlus, Sprout, Apple, Leaf, Carrot, Flower2, Wheat, CircleCheck as CheckCircle2 } from "lucide-react";
-import { SPECIES_META } from "../lib/species.js";
+import { estimateSpeciesReference } from "../lib/speciesEstimates.js";
 import { projectPlanting, projectContainer } from "../lib/projections.js";
 import { fmtDate, formatComposition } from "../lib/format.js";
 import { friendlyStage } from "../lib/reminders.js";
@@ -15,7 +15,7 @@ export function GenericPlantImage({ harvestType, size = 28 }) {
 
 export function PlantCard({ planting, events, containers, addPlantingPhoto, onOpen }) {
   const proj = projectPlanting(planting, events);
-  const meta = SPECIES_META[planting.species];
+  const meta = estimateSpeciesReference(planting.species_info);
   const container = containers.find((c) => c.id === proj.container_id);
   const contState = projectContainer(container, events);
   const coverImage = proj.cover_image || contState?.cover_image;
@@ -35,7 +35,7 @@ export function PlantCard({ planting, events, containers, addPlantingPhoto, onOp
       }}
     >
       <div className="sg-cover">
-        {coverImage ? <img src={coverImage} alt={planting.nickname} /> : <div className="sg-cover-generic"><GenericPlantImage harvestType={meta?.harvest_type} /></div>}
+        {coverImage ? <img src={coverImage} alt={planting.nickname} /> : <div className="sg-cover-generic"><GenericPlantImage harvestType={planting.species_info?.harvest_type} /></div>}
         {/* stopPropagation: tapping the upload icon should swap the photo, not open the plant's detail page */}
         <label className="sg-cover-upload" title="Add a photo" onClick={(e) => e.stopPropagation()}>
           <ImagePlus size={13} />
@@ -65,7 +65,7 @@ export function PlantCard({ planting, events, containers, addPlantingPhoto, onOp
         </div>
       )}
       {proj.open_issue && <div className="sg-issue"><Bug size={13} /> {proj.open_issue.payload?.pest || proj.open_issue.payload?.disease} · {proj.open_issue.payload?.severity} · {fmtDate(proj.open_issue.timestamp)}</div>}
-      {meta && <div className="sg-reference">Ideal: {meta.sun_hours[0]}–{meta.sun_hours[1]}h sun · water ~every {meta.water_frequency_days}d · ~{meta.days_to_maturity}d to maturity</div>}
+      {meta && <div className="sg-reference">Ideal: {meta.sun_hours[0]}–{meta.sun_hours[1]}h sun · water ~every {meta.water_frequency_days}d</div>}
     </div>
   );
 }

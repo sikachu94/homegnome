@@ -1,5 +1,5 @@
 import { projectPlanting } from "./projections.js";
-import { SPECIES_META } from "./species.js";
+import { estimateSpeciesReference } from "./speciesEstimates.js";
 import { fmtDate } from "./format.js";
 
 const DAY_MS = 86400000;
@@ -10,7 +10,7 @@ export function buildReminders(plantings, events, weather) {
   for (const planting of plantings) {
     const proj = projectPlanting(planting, events);
     if (proj.status === "ended") continue;
-    const meta = SPECIES_META[planting.species];
+    const meta = estimateSpeciesReference(planting.species_info);
     if (!meta) continue;
 
     if (proj.stage === meta.target_stage) {

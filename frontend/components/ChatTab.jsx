@@ -1,7 +1,7 @@
 import { useState, useRef, useEffect } from "react";
 import { Loader2 } from "lucide-react";
 import { apiChat } from "../api.js";
-import { SPECIES_META } from "../lib/species.js";
+import { estimateSpeciesReference } from "../lib/speciesEstimates.js";
 import { projectPlanting, projectContainer } from "../lib/projections.js";
 import { fmtDateTime, formatComposition } from "../lib/format.js";
 
@@ -29,9 +29,9 @@ export function ChatTab({ gardenId, plantings, containers, events, garden, weath
         return `${p.nickname} (${p.species}, id ${p.id}): stage=${proj.stage}, status=${proj.status}, days_since_entry=${proj.days_since_entry}, last_watered=${proj.last_watered_at ? fmtDateTime(proj.last_watered_at) : "never logged"}, harvests=${proj.harvest_count}, container=${cont ? `${cont.type}/${cont.material}${cont.volume_l ? `/${cont.volume_l}L` : ""}, soil: ${formatComposition(contState.soil_composition)}, placement: ${contState.placement}` : "none recorded"}${proj.open_issue ? `, open_issue=${proj.open_issue.event_type} (${proj.open_issue.payload?.severity || ""} ${proj.open_issue.payload?.pest || proj.open_issue.payload?.disease || ""})` : ""}`;
       }).join("\n");
       const reference = plantings.map((p) => {
-        const m = SPECIES_META[p.species];
+        const m = estimateSpeciesReference(p.species_info);
         if (!m) return null;
-        return `${p.species}: sun ${m.sun_hours[0]}-${m.sun_hours[1]}h/day, water every ~${m.water_frequency_days}d, ~${m.days_to_maturity}d to maturity, ready to harvest at "${m.target_stage}" stage, flowering means ${m.flowering_signal === "harvest_precondition" ? "on track" : m.flowering_signal === "decline_warning" ? "past its prime / bolting" : "not particularly meaningful"}.`;
+        return `${p.species}: sun ${m.sun_hours[0]}-${m.sun_hours[1]}h/day, water every ~${m.water_frequency_days}d, ready to harvest at "${m.target_stage}" stage, flowering means ${m.flowering_signal === "harvest_precondition" ? "on track" : m.flowering_signal === "decline_warning" ? "past its prime / bolting" : "not particularly meaningful"}.`;
       }).filter(Boolean).join("\n");
       const weatherSummary = garden?.location
         ? weather ? `Location: ${garden.label}. Current ${Math.round(weather.current.temperature_2m)}°C, ${weather.daily.precipitation_sum[0]}mm rain forecast today, low ${Math.round(weather.daily.temperature_2m_min[0])}°C / high ${Math.round(weather.daily.temperature_2m_max[0])}°C.` : "Location is set but weather hasn't loaded yet."

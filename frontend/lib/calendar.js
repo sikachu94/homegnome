@@ -1,5 +1,5 @@
 import { projectPlanting } from "./projections.js";
-import { SPECIES_META } from "./species.js";
+import { estimateSpeciesReference } from "./speciesEstimates.js";
 
 const DAY_MS = 86400000;
 
@@ -44,7 +44,7 @@ export function generateCalendarTasks(plantings, events, existingTasks = [], tod
   for (const planting of plantings) {
     const projection = projectPlanting(planting, events);
     if (projection.status === "ended") continue;
-    const meta = SPECIES_META[planting.species];
+    const meta = estimateSpeciesReference(planting.species_info);
     if (!meta) continue;
 
     const wateringKey = `${planting.id}:watering`;

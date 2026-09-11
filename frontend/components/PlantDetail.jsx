@@ -1,6 +1,6 @@
 import { useState, useRef } from "react";
 import { ChevronLeft, ChevronDown, Box, Layers, MapPin, Bug, CircleCheck as CheckCircle2 } from "lucide-react";
-import { SPECIES_META } from "../lib/species.js";
+import { estimateSpeciesReference } from "../lib/speciesEstimates.js";
 import { projectPlanting, projectContainer } from "../lib/projections.js";
 import { fmtDate, fmtTime, formatComposition, groupByDay } from "../lib/format.js";
 import { friendlyStage } from "../lib/reminders.js";
@@ -18,7 +18,7 @@ import { QuickActions } from "./QuickActions.jsx";
  */
 export function PlantDetail({ planting, plantings, containers, events, garden, addEvent, addPlantingPhoto, showToast, onBack, onSelectPlanting, onRequestManualEntry }) {
   const proj = projectPlanting(planting, events);
-  const meta = SPECIES_META[planting.species];
+  const meta = estimateSpeciesReference(planting.species_info);
   const container = containers.find((c) => c.id === proj.container_id);
   const contState = projectContainer(container, events);
   const coverImage = proj.cover_image || contState?.cover_image;
@@ -87,7 +87,7 @@ export function PlantDetail({ planting, plantings, containers, events, garden, a
 
       <div className="sg-plant-detail-head">
         <div className="sg-cover sm">
-          {coverImage ? <img src={coverImage} alt={planting.nickname} /> : <div className="sg-cover-generic"><GenericPlantImage harvestType={meta?.harvest_type} size={26} /></div>}
+          {coverImage ? <img src={coverImage} alt={planting.nickname} /> : <div className="sg-cover-generic"><GenericPlantImage harvestType={planting.species_info?.harvest_type} size={26} /></div>}
         </div>
         <div style={{ flex: 1, minWidth: 0 }}>
           <div className="sg-plant-name">{planting.nickname}</div>
@@ -124,11 +124,10 @@ export function PlantDetail({ planting, plantings, containers, events, garden, a
           <div className="sg-siblings-row">
             {siblings.map((sib) => {
               const sibProj = projectPlanting(sib, events);
-              const sibMeta = SPECIES_META[sib.species];
               return (
                 <button key={sib.id} className="sg-sibling" onClick={() => onSelectPlanting?.(sib.id)}>
                   <div className="sg-sibling-avatar">
-                    {sibProj.cover_image ? <img src={sibProj.cover_image} alt={sib.nickname} /> : <GenericPlantImage harvestType={sibMeta?.harvest_type} size={18} />}
+                    {sibProj.cover_image ? <img src={sibProj.cover_image} alt={sib.nickname} /> : <GenericPlantImage harvestType={sib.species_info?.harvest_type} size={18} />}
                   </div>
                   <span>{sib.nickname}</span>
                 </button>
@@ -144,21 +143,13 @@ export function PlantDetail({ planting, plantings, containers, events, garden, a
         </div>
       )}
 
-      {(meta || planting.species_info) && (
+      {planting.species_info && (
         <div className="sg-ideal-card">
-          {planting.species_info?.latin_name && <span className="sg-latin-name">{planting.species_info.latin_name}</span>}
-          {planting.species_info?.usda_common_name && <span className="sg-common-name">{planting.species_info.usda_common_name}</span>}
+          {planting.species_info.latin_name && <span className="sg-latin-name">{planting.species_info.latin_name}</span>}
+
           <h2>Ideal conditions</h2>
 
-          {meta && (
-            <div className="sg-ideal-stats">
-              <div><span>Sun</span><strong>{meta.sun_hours[0]}–{meta.sun_hours[1]}h/day</strong></div>
-              <div><span>Water</span><strong>Every ~{meta.water_frequency_days}d</strong></div>
-              <div><span>Maturity</span><strong>~{meta.days_to_maturity}d</strong></div>
-            </div>
-          )}
-
-          {planting.species_info && (planting.species_info.variety || planting.species_info.life_cycle_type || planting.species_info.harvest_type) && (
+          {(planting.species_info.variety || planting.species_info.life_cycle_type || planting.species_info.harvest_type) && (
             <div className="sg-ideal-rows">
               {planting.species_info.variety && <div><span>Variety</span><strong>{planting.species_info.variety}</strong></div>}
               {planting.species_info.life_cycle_type && <div><span>Life cycle</span><strong>{planting.species_info.life_cycle_type}</strong></div>}
