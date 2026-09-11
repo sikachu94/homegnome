@@ -1,8 +1,10 @@
+from datetime import datetime, timezone
 from typing import Any
 
 from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel, ConfigDict, Field
 
+from . import hardiness
 from .deps import get_current_user, get_db, verify_garden_ownership
 
 router = APIRouter()
@@ -252,4 +254,17 @@ def update_garden(
     result = db.table("gardens").update(values).eq("id", garden_id).execute()
     if not result.data:
         raise HTTPException(status_code=404, detail="Garden not found")
-    return {"garden": result.data[0]}
+    if "location" not in values:
+        return {"garden": result.data[0]}
+
+    location = values.get("location") or {}
+    zone_data = None
+    if isinstance(location, dict) and location.get("lat") is not None and location.get("lng") is not None:
+        zone_data = hardiness.lookup_hardiness_zone(location["lat"], location["lng"])
+    zone_values = {
+        "hardiness_zone": zone_data.get("zone") if zone_data else None,
+        "hardiness_zone_temp_range_f": zone_data.get("temp_range_f") if zone_data else None,
+        "hardiness_zone_updated_at": datetime.now(timezone.utc).isoformat() if zone_data else None,
+    }
+    enriched = db.table("gardens").update(zone_values).eq("id", garden_id).execute()
+    return {"garden": enriched.data[0] if enriched.data else {**result.data[0], **zone_values}}

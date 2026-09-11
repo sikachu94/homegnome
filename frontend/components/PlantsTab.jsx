@@ -103,6 +103,7 @@ export function PlantsTab({ garden, plantings, containers, events, addPlanting, 
           <div><span>Containers</span><strong>{containers.length}</strong></div>
           <div><span>Tracking since</span><strong>{garden?.established_at ? fmtDate(garden.established_at) : "—"}</strong></div>
           <div><span>Location</span><strong>{garden?.label || "Not set"}</strong></div>
+          <div><span>Hardiness zone</span><strong>{garden?.hardiness_zone ? `Zone ${garden.hardiness_zone}` : "Not available"}</strong></div>
         </div>
         <textarea className="sg-garden-notes" rows={2} placeholder="Notes about the garden — microclimate, common pests, anything gnome should know."
           value={garden?.notes || ""} onChange={(e) => updateGardenLocal({ notes: e.target.value })} onBlur={() => persistGarden(garden)} />

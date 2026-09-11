@@ -37,6 +37,16 @@ def _flatten_planting(item: dict) -> dict:
         "life_cycle_type": species.get("life_cycle_type"),
         "latin_name": species.get("latin_name"),
         "variety": species.get("variety"),
+        "ph_min": species.get("ph_min"),
+        "ph_max": species.get("ph_max"),
+        "precipitation_min_in": species.get("precipitation_min_in"),
+        "precipitation_max_in": species.get("precipitation_max_in"),
+        "moisture_use": species.get("moisture_use"),
+        "drought_tolerance": species.get("drought_tolerance"),
+        "shade_tolerance": species.get("shade_tolerance"),
+        "growth_habit": species.get("growth_habit"),
+        "bloom_period": species.get("bloom_period"),
+        "usda_source_url": species.get("usda_source_url"),
     }
     return item
 
@@ -45,7 +55,7 @@ def _flatten_planting(item: dict) -> dict:
 def list_gardens(user_id: str = Depends(get_current_user), db = Depends(get_db)):
     gardens = (
         db.table("gardens")
-        .select("id, name, type, location, timezone, established_at, notes")
+        .select("id, name, type, location, timezone, established_at, notes, hardiness_zone, hardiness_zone_temp_range_f, hardiness_zone_updated_at")
         .eq("user_id", user_id)
         .execute()
         .data
@@ -58,7 +68,7 @@ def list_gardens(user_id: str = Depends(get_current_user), db = Depends(get_db))
 
     plantings_raw = (
         db.table("plantings")
-        .select("*, plants(id, plant_name, harvest_type, life_cycle_type, latin_name, variety)")
+        .select("*, plants(id, plant_name, harvest_type, life_cycle_type, latin_name, variety, ph_min, ph_max, precipitation_min_in, precipitation_max_in, moisture_use, drought_tolerance, shade_tolerance, growth_habit, bloom_period, usda_source_url)")
         .in_("garden_id", garden_ids)
         .execute()
         .data

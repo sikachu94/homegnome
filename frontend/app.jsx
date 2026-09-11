@@ -100,6 +100,7 @@ export default function App() {
       ) : (
         <div className="sg-weatherbar">
           <span className="sg-weather-loc"><MapPin size={13} /> {garden.label}</span>
+          {garden.hardiness_zone && <span className="sg-hardiness-badge">Zone {garden.hardiness_zone}</span>}
           {weather ? (
             <span className="sg-weather-data">
               <Thermometer size={13} /> {Math.round(weather.current.temperature_2m)}°C

@@ -24,6 +24,12 @@ export function PlantDetail({ planting, plantings, containers, events, garden, a
   const coverImage = proj.cover_image || contState?.cover_image;
   const isReady = meta && proj.stage === meta.target_stage && proj.status === "active";
   const isBolting = meta?.flowering_signal === "decline_warning" && proj.stage === "flowering" && proj.status === "active";
+  const usda = planting.species_info;
+  const hasUsdaData = usda && [
+    "latin_name", "ph_min", "ph_max", "precipitation_min_in", "precipitation_max_in",
+    "moisture_use", "drought_tolerance", "shade_tolerance", "growth_habit", "bloom_period",
+    "usda_source_url",
+  ].some((field) => usda[field] !== null && usda[field] !== undefined && usda[field] !== "");
 
   const [quickBusy, setQuickBusy] = useState(null);
   const photoInputRef = useRef(null);
@@ -163,6 +169,19 @@ export function PlantDetail({ planting, plantings, containers, events, garden, a
             <p className="sg-ideal-summary">
               {meta.sun_hours[0]}–{meta.sun_hours[1]}h sun · water ~every {meta.water_frequency_days}d · ~{meta.days_to_maturity}d to maturity
             </p>
+          )}
+          {hasUsdaData && (
+            <div className="sg-usda-panel">
+              <div className="sg-usda-title">USDA PLANTS reference</div>
+              <div className="sg-usda-rows">
+                {usda.latin_name && <div><span>Latin name</span><strong>{usda.latin_name}</strong></div>}
+                {usda.ph_min != null && usda.ph_max != null && <div><span>Soil pH</span><strong>pH {usda.ph_min}–{usda.ph_max}</strong></div>}
+                {usda.moisture_use && <div><span>Moisture use</span><strong>{usda.moisture_use}</strong></div>}
+                {usda.drought_tolerance && <div><span>Drought tolerance</span><strong>{usda.drought_tolerance}</strong></div>}
+                {usda.growth_habit && <div><span>Growth habit</span><strong>{usda.growth_habit}</strong></div>}
+              </div>
+              {usda.usda_source_url && <a className="sg-usda-source" href={usda.usda_source_url} target="_blank" rel="noreferrer">Source: USDA PLANTS Database</a>}
+            </div>
           )}
         </div>
       )}

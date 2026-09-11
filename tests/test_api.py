@@ -8,6 +8,7 @@ from api.deps import OpenRouterClient
 from api.extract import ExtractRequest
 from api import chat as chat_api
 from api import gardens as gardens_api
+from api import hardiness as hardiness_api
 from api import writes as writes_api
 from api.index import app
 
@@ -316,7 +317,14 @@ def test_gardens_endpoint_returns_owned_gardens_with_related_data(monkeypatch):
                     "id": "planting-1",
                     "garden_id": "garden-1",
                     "plant_id": "plant-1",
-                    "plants": {"id": "plant-1", "plant_name": "Tomato"},
+                    "plants": {
+                        "id": "plant-1",
+                        "plant_name": "Tomato",
+                        "ph_min": 5.5,
+                        "ph_max": 7.0,
+                        "moisture_use": "Medium",
+                        "usda_source_url": "https://plants.usda.gov/plant-profile/TO",
+                    },
                 }],
                 "containers": [{"id": "container-1", "garden_id": "garden-1", "name": "Pot"}],
                 "garden_events": [],
@@ -351,6 +359,16 @@ def test_gardens_endpoint_returns_owned_gardens_with_related_data(monkeypatch):
                         "life_cycle_type": None,
                         "latin_name": None,
                         "variety": None,
+                        "ph_min": 5.5,
+                        "ph_max": 7.0,
+                        "precipitation_min_in": None,
+                        "precipitation_max_in": None,
+                        "moisture_use": "Medium",
+                        "drought_tolerance": None,
+                        "shade_tolerance": None,
+                        "growth_habit": None,
+                        "bloom_period": None,
+                        "usda_source_url": "https://plants.usda.gov/plant-profile/TO",
                     },
                 }],
                 "containers": [{"id": "container-1", "garden_id": "garden-1", "name": "Pot"}],
@@ -707,3 +725,88 @@ def test_update_garden_persists_allowed_metadata(monkeypatch):
 
     assert response.status_code == 200
     assert response.json()["garden"]["name"] == "Updated garden"
+
+
+def test_lookup_hardiness_zone_parses_zone_attributes(monkeypatch):
+    class FakeResponse:
+        def raise_for_status(self):
+            return None
+
+        def json(self):
+            return {"results": [{"attributes": {"ZONE": "7b", "TEMP_RANGE": "5 to 10"}}]}
+
+    monkeypatch.setattr(hardiness_api.httpx, "get", lambda *_args, **_kwargs: FakeResponse())
+
+    assert hardiness_api.lookup_hardiness_zone(39.95, -75.16) == {
+        "zone": "7b",
+        "temp_range_f": "5 to 10",
+    }
+
+
+def test_lookup_hardiness_zone_returns_none_for_nodata_or_network_error(monkeypatch):
+    class NoDataResponse:
+        def raise_for_status(self):
+            return None
+
+        def json(self):
+            return {"value": "NoData", "results": []}
+
+    monkeypatch.setattr(hardiness_api.httpx, "get", lambda *_args, **_kwargs: NoDataResponse())
+    assert hardiness_api.lookup_hardiness_zone(30.04, 31.24) is None
+
+    def raise_network_error(*_args, **_kwargs):
+        raise hardiness_api.httpx.RequestError("offline")
+
+    monkeypatch.setattr(hardiness_api.httpx, "get", raise_network_error)
+    assert hardiness_api.lookup_hardiness_zone(39.95, -75.16) is None
+
+
+def test_update_garden_enriches_location_and_clears_missing_zone(monkeypatch):
+    updates = []
+
+    class FakeQuery:
+        def __init__(self):
+            self.values = None
+
+        def select(self, _columns):
+            return self
+
+        def eq(self, _column, _value):
+            return self
+
+        def limit(self, _value):
+            return self
+
+        def update(self, values):
+            self.values = values
+            updates.append(values)
+            return self
+
+        def execute(self):
+            return type("Result", (), {"data": [{"id": "garden-1", **(self.values or {})}]})()
+
+    class FakeSupabase:
+        def table(self, _table):
+            return FakeQuery()
+
+    monkeypatch.setattr(writes_api.hardiness, "lookup_hardiness_zone", lambda *_args: None)
+    fake_supabase = FakeSupabase()
+    app.dependency_overrides[writes_api.get_current_user] = lambda: "user-1"
+    app.dependency_overrides[writes_api.get_db] = lambda: fake_supabase
+    try:
+        response = client.patch(
+            "/api/gardens/garden-1",
+            json={"location": {"lat": 30.04, "lng": 31.24}},
+        )
+    finally:
+        app.dependency_overrides.clear()
+
+    assert response.status_code == 200
+    assert updates == [
+        {"location": {"lat": 30.04, "lng": 31.24}},
+        {
+            "hardiness_zone": None,
+            "hardiness_zone_temp_range_f": None,
+            "hardiness_zone_updated_at": None,
+        },
+    ]
