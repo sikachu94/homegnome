@@ -716,77 +716,118 @@ body,
   margin-top: 20px;
 }
 
-/* ---------- Garden overview: the notebook's cover page ---------- */
+/* ---------- Garden overview: quiet identity strip, not a dashboard card ---------- */
 .sg-garden-overview {
-  background: var(--panel);
+  background: var(--canvas);
   border: 1px solid var(--line);
-  border-radius: 14px;
-  padding: 18px;
+  border-radius: 12px;
+  padding: 14px 16px;
   display: flex;
   flex-direction: column;
-  gap: 14px;
+  gap: 12px;
 }
 
-.sg-garden-row {
+.sg-garden-header {
   display: flex;
+  align-items: center;
+  justify-content: space-between;
   gap: 10px;
-  flex-wrap: wrap;
+}
+
+.sg-garden-identity {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex: 1;
+  min-width: 0;
 }
 
 .sg-garden-name {
   font-family: 'Fraunces', serif;
-  font-size: 18px;
+  font-size: 16px;
   font-weight: 600;
   border: none;
+  border-bottom: 1px solid transparent;
   background: none;
-  padding: 4px 2px;
+  padding: 2px 0;
   flex: 1;
-  min-width: 160px;
+  min-width: 80px;
   color: var(--ink);
   outline: none;
-  min-height: 44px;
 }
 
-.sg-garden-row select {
-  border: 1px solid var(--line);
-  border-radius: 7px;
-  padding: 8px 10px;
-  font-size: 16px;
-  font-family: 'Inter', sans-serif;
+.sg-garden-name:focus {
+  border-bottom-color: var(--moss);
+}
+
+.sg-garden-type-badge {
+  font-size: 10.5px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--muted);
   background: var(--panel);
-  min-height: 44px;
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  padding: 3px 9px;
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+
+.sg-garden-header-actions {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+  flex-shrink: 0;
+}
+
+.sg-garden-switch-select {
+  border: none;
+  background: none;
+  font-size: 12.5px;
+  font-weight: 600;
+  color: var(--muted);
+  padding: 6px 4px;
+  max-width: 130px;
+  cursor: pointer;
+}
+
+.sg-garden-switch-select:hover {
   color: var(--ink);
 }
 
-.sg-garden-stats {
+.sg-garden-meta {
   display: flex;
-  gap: 24px;
   flex-wrap: wrap;
+  row-gap: 4px;
+  column-gap: 16px;
   padding-top: 10px;
   border-top: 1px solid var(--line);
 }
 
-.sg-garden-stats div {
+.sg-garden-meta-item {
   display: flex;
-  flex-direction: column;
-  gap: 3px;
+  align-items: baseline;
+  gap: 5px;
+  font-size: 12px;
 }
 
-.sg-garden-stats span {
-  font-size: 11.5px;
+.sg-garden-meta-item span {
   color: var(--muted);
 }
 
-.sg-garden-stats strong {
-  font-size: 15px;
+.sg-garden-meta-item strong {
   font-weight: 600;
+  color: var(--ink);
+  font-size: 12.5px;
 }
 
 .sg-garden-notes {
   border: 1px solid var(--line);
-  border-radius: 9px;
-  padding: 10px;
+  border-radius: 8px;
+  padding: 9px 10px;
   font-size: 16px;
+  /* keep 16px — prevents iOS input zoom */
   font-family: 'Inter', sans-serif;
   resize: vertical;
   background: var(--panel);
@@ -795,6 +836,12 @@ body,
 
 .sg-garden-notes::placeholder {
   color: var(--muted);
+}
+
+.sg-garden-delete-confirm p {
+  margin: 0 0 4px;
+  font-size: 13.5px;
+  color: var(--ink);
 }
 
 /* ---------- Plant cards: each one a small labeled specimen, not a SaaS tile ---------- */
@@ -1827,27 +1874,4 @@ body,
 
 .sg-manual-note::placeholder {
   color: var(--muted);
-}
-
-.sg-garden-switcher {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-}
-
-.sg-garden-switcher select {
-  flex: 1;
-  border: 1px solid var(--line);
-  border-radius: 7px;
-  padding: 9px 10px;
-  font-size: 15px;
-  background: var(--panel);
-  min-height: 44px;
-  color: var(--ink);
-}
-
-.sg-garden-delete-confirm p {
-  margin: 0 0 4px;
-  font-size: 13.5px;
-  color: var(--ink);
 }
