@@ -1,13 +1,14 @@
 <div align="center">
   <img src="frontend/assets/gnome_only.jpg" alt="myGnomie" width="140" />
+  
+  # [myGnomie](https://mygnomie.vercel.app)
 
-  # myGnomie
+  [mygnomie.vercel.app](https://mygnomie.vercel.app)
 
   **An AI-assisted plant tracker built to explore event-sourced garden data.**
-
-  Log what happens in a garden in plain language, and myGnomie turns it into a structured,
-  queryable history — then projects that history back into live plant state, care reminders,
-  and a calendar, on demand.
+  
+  An easy way to log events in your garden. 
+  Your AI assistant can then help you and provide advice based on events.
 
   [![FastAPI](https://img.shields.io/badge/backend-FastAPI-009688?logo=fastapi&logoColor=white)](https://fastapi.tiangolo.com/)
   [![Supabase](https://img.shields.io/badge/database-Supabase%20%2F%20Postgres-3ECF8E?logo=supabase&logoColor=white)](https://supabase.com/)
@@ -19,11 +20,6 @@
 </div>
 
 ---
-
-> **Portfolio note:** this project exists to demonstrate backend design and data-modeling
-> decisions — event sourcing, derived-state projections, row-level multi-tenancy, and a typed
-> API surface — rather than to ship as a finished consumer product. The README below is written
-> accordingly: it leads with architecture, not screenshots.
 
 ## Table of contents
 
