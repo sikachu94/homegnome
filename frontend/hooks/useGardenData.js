@@ -51,7 +51,11 @@ export function useGardenData() {
     (async () => {
       try {
         const response = await apiGardens();
-        const remoteGarden = response.gardens?.find((item) => item.id === GARDEN_ID) || response.gardens?.[0];
+        const list = response.gardens || [];
+        // Keep the switcher (and anything else relying on allGardens) in
+        // sync from the very first load, not just after create/delete.
+        setAllGardens(list);
+        const remoteGarden = list.find((item) => item.id === GARDEN_ID) || list[0];
         if (!remoteGarden) throw new Error(`Configured garden ${GARDEN_ID} was not returned by the API`);
         await applyGarden(remoteGarden);
         setLoadError(null);
@@ -70,7 +74,9 @@ export function useGardenData() {
 
   const refresh = useCallback(async () => {
     const response = await apiGardens();
-    const remoteGarden = response.gardens?.find((item) => item.id === gardenId);
+    const list = response.gardens || [];
+    setAllGardens(list);
+    const remoteGarden = list.find((item) => item.id === gardenId);
     if (!remoteGarden) throw new Error(`Garden ${gardenId} was not returned by the API`);
     await applyGarden(remoteGarden);
   }, [applyGarden, gardenId]);
@@ -184,20 +190,31 @@ export function useGardenData() {
 
   const resetDemo = useCallback(async () => {
     const response = await apiGardens();
-    const remoteGarden = response.gardens?.find((item) => item.id === gardenId);
+    const list = response.gardens || [];
+    setAllGardens(list);
+    const remoteGarden = list.find((item) => item.id === gardenId);
     if (!remoteGarden) throw new Error(`Configured garden ${GARDEN_ID} was not returned by the API`);
     await applyGarden(remoteGarden);
     setLoadError(null);
   }, [applyGarden, gardenId]);
-  
-const switchGarden = useCallback(async (targetId) => {
+
+  const switchGarden = useCallback(async (targetId) => {
     const target = allGardens.find((item) => item.id === targetId);
     if (!target) return;
     await applyGarden(target);
   }, [allGardens, applyGarden]);
 
   const createGarden = useCallback(async (form) => {
-    await apiCreateGarden({
+    // apiCreateGarden returns { garden: {...} } with the real DB id of the
+    // row that was just inserted (see api/writes.py's create_garden) — use
+    // that id to identify the new garden. Previously this discarded the
+    // return value and instead grabbed list[list.length - 1] from a fresh
+    // /api/gardens fetch, assuming the newest garden would sort last. But
+    // api/gardens.py's list_gardens query has no ORDER BY, so Postgres/
+    // PostgREST doesn't guarantee row order — that assumption could (and
+    // did) silently switch the user into the wrong existing garden instead
+    // of the one they just created.
+    const { garden: createdGarden } = await apiCreateGarden({
       name: form.name?.trim() || "New garden",
       type: form.type || "balcony",
       notes: form.notes || undefined,
@@ -205,7 +222,7 @@ const switchGarden = useCallback(async (targetId) => {
     const response = await apiGardens();
     const list = response.gardens || [];
     setAllGardens(list);
-    const created = list[list.length - 1]; // newest; fine since we just created it and nothing else changed the set
+    const created = list.find((item) => item.id === createdGarden.id) || createdGarden;
     await applyGarden(created);
     return created;
   }, [applyGarden]);
