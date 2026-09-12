@@ -1950,3 +1950,26 @@ body,
 .sg-manual-note::placeholder {
   color: var(--muted);
 }
+
+/* ---------- Row actions (edit/delete) — compact, inline, right-aligned ---------- */
+.sg-event-row-side {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 4px;
+  flex-shrink: 0;
+}
+
+.sg-event-row-actions {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+}
+
+.sg-icon-btn.xs {
+  margin-left: 0;
+  width: 28px;
+  height: 28px;
+  min-width: 28px;
+  min-height: 28px;
+}
