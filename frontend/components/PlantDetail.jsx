@@ -1,5 +1,5 @@
-import { useState, useRef } from "react";
-import { ChevronLeft, ChevronDown, Box, Layers, MapPin, Bug, Sprout, Sun, CircleCheck as CheckCircle2 } from "lucide-react";
+import { useState } from "react";
+import { ChevronLeft, ChevronDown, Box, Layers, MapPin, Bug, Sprout, Sun, Pencil, Trash2, CircleCheck as CheckCircle2 } from "lucide-react";
 import { estimateSpeciesReference } from "../lib/speciesEstimates.js";
 import { projectPlanting, projectContainer } from "../lib/projections.js";
 import { fmtDate, fmtTime, formatComposition, groupByDay } from "../lib/format.js";
@@ -7,16 +7,15 @@ import { friendlyStage } from "../lib/reminders.js";
 import { labelForEventType, isAlertEvent, describeEventPayload } from "../lib/events.js";
 import { GenericPlantImage } from "./PlantCard.jsx";
 import { EventIcon } from "./EventIcon.jsx";
-import { QuickActions } from "./QuickActions.jsx";
+import { LogEntryForm } from "./LogEntryForm.jsx";
 
 /**
  * The "zoom in" screen for a single plant, reached by tapping its card in
- * the Garden tab. Shows the same quick-tap actions as the Log tab
- * (QuickActions.jsx) already scoped to this plant, its container info, its
- * siblings in that container, ideal-conditions reference data, and its own
- * history.
+ * the Garden tab. Hosts the same log-entry form as the Log tab, locked to
+ * this plant, plus its container info, siblings, ideal-conditions
+ * reference data, and its own editable history.
  */
-export function PlantDetail({ planting, plantings, containers, events, garden, addEvent, addPlantingPhoto, showToast, onBack, onSelectPlanting, onRequestManualEntry }) {
+export function PlantDetail({ planting, plantings, containers, events, garden, addEvent, updateEvent, deleteEvent, showToast, onBack, onSelectPlanting }) {
   const proj = projectPlanting(planting, events);
   const meta = estimateSpeciesReference(planting.species_info);
   const container = containers.find((c) => c.id === proj.container_id);
@@ -31,47 +30,25 @@ export function PlantDetail({ planting, plantings, containers, events, garden, a
     "usda_source_url",
   ].some((field) => usda[field] !== null && usda[field] !== undefined && usda[field] !== "");
 
-  const [quickBusy, setQuickBusy] = useState(null);
-  const photoInputRef = useRef(null);
+  const [editingEvent, setEditingEvent] = useState(null);
   const notify = (message, kind = "success") => showToast?.(message, kind);
 
-  const runQuick = async (eventType) => {
-    setQuickBusy(eventType);
+  const handleDeleteEvent = async (eventId) => {
+    if (!window.confirm("Delete this log entry? This can't be undone.")) return;
     try {
-      const { quickLogEvent } = await import("../lib/events.js");
-      await addEvent(quickLogEvent(eventType, planting.id, garden?.id));
-      notify(`${labelForEventType(eventType)}.`);
+      await deleteEvent(eventId);
+      notify("Entry deleted.");
     } catch (err) {
-      notify("Couldn't save that — try again.", "error");
-    } finally {
-      setQuickBusy(null);
+      notify("Couldn't delete that — try again.", "error");
     }
   };
 
-  const handlePhoto = async (file) => {
-    if (!file) return;
-    setQuickBusy("photo_log");
-    try {
-      await addPlantingPhoto(planting.id, file);
-      notify("Photo added.");
-    } catch (err) {
-      notify("Couldn't attach that photo — try again.", "error");
-    } finally {
-      setQuickBusy(null);
-    }
-  };
-
-  // Other plantings sharing this plant's current container — just a link
-  // over to their own zoom-in page, nothing more.
   const siblings = container
     ? (plantings || [])
       .filter((p) => p.id !== planting.id)
       .filter((p) => projectPlanting(p, events).container_id === container.id)
     : [];
 
-  // This plant's own events, plus its current container's events (soil
-  // amendments, relocations) — those are logged against the container
-  // entity, but from the gardener's point of view they belong here too.
   const relevantEvents = events
     .filter((e) => (e.entity_type === "planting" && e.entity_id === planting.id) || (e.entity_type === "container" && container && e.entity_id === container.id))
     .sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp));
@@ -107,8 +84,6 @@ export function PlantDetail({ planting, plantings, containers, events, garden, a
         <div><span>Watered</span><strong>{proj.last_watered_at ? fmtDate(proj.last_watered_at) : "—"}</strong></div>
         <div><span>Harvests</span><strong>{proj.harvest_count || "—"}</strong></div>
       </div>
-
-      <input ref={photoInputRef} type="file" accept="image/*" hidden onChange={(e) => { handlePhoto(e.target.files?.[0]); e.target.value = ""; }} />
 
       {container && (
         <div className="sg-container-info" style={{ margin: "16px 0 16px", border: "none", padding: 0 }}>
@@ -187,13 +162,12 @@ export function PlantDetail({ planting, plantings, containers, events, garden, a
           )}
         </div>
       )}
-      <QuickActions
-        busy={quickBusy}
-        onWater={() => runQuick("watering")}
-        onHarvest={() => runQuick("harvest")}
-        onPhotoClick={() => photoInputRef.current?.click()}
-        onMeasure={() => onRequestManualEntry?.("growth_measurement", planting.id)}
-        onIssue={() => onRequestManualEntry?.("pest_sighting", planting.id)}
+
+      <p className="sg-form-label" style={{ margin: "18px 0 8px" }}>Log entry</p>
+      <LogEntryForm
+        gardenId={garden?.id} lockedPlantingId={planting.id}
+        addEvent={addEvent} updateEvent={updateEvent} notify={notify}
+        editingEvent={editingEvent} onDoneEditing={() => setEditingEvent(null)}
       />
 
       <div className="sg-recent">
@@ -217,7 +191,13 @@ export function PlantDetail({ planting, plantings, containers, events, garden, a
                         {e.note && <div className="sg-event-note">"{e.note}"</div>}
                         {e.media?.length ? <img className="sg-event-thumb" src={e.media[0]} alt="" /> : null}
                       </div>
-                      <div className="sg-event-time">{fmtTime(e.timestamp)}</div>
+                      <div className="sg-event-row-side">
+                        <div className="sg-event-time">{fmtTime(e.timestamp)}</div>
+                        <div className="sg-event-row-actions">
+                          <button className="sg-icon-btn xs" onClick={() => setEditingEvent(e)} aria-label="Edit entry"><Pencil size={13} /></button>
+                          <button className="sg-icon-btn xs" onClick={() => handleDeleteEvent(e.id)} aria-label="Delete entry"><Trash2 size={13} /></button>
+                        </div>
+                      </div>
                     </div>
                   );
                 })}

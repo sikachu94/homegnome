@@ -17,20 +17,23 @@ const blankNewPlanting = () => ({
   photo: null,
 });
 
-export function PlantsTab({ garden, allGardens = [], onSwitchGarden, onCreateGarden, onDeleteGarden, plantings, containers, events, addPlanting, addPlantingPhoto, addEvent, weather, updateGardenAndPersist, showToast, openAddSignal, onRequestManualEntry }) {
+export function PlantsTab({
+  garden, allGardens = [], onSwitchGarden, onCreateGarden, onDeleteGarden,
+  plantings, containers, events, addPlanting, addPlantingPhoto, addEvent, updateEvent, deleteEvent,
+  weather, updateGardenAndPersist, showToast, openAddSignal,
+  selectedPlantingId, onSelectPlanting,
+}) {
   const [showAddForm, setShowAddForm] = useState(false);
   const [showAdvanced, setShowAdvanced] = useState(false);
   const [newPlanting, setNewPlanting] = useState(blankNewPlanting());
-  const [selectedPlantingId, setSelectedPlantingId] = useState(null);
   const [draftName, setDraftName] = useState(garden?.name || "");
   const [draftNotes, setDraftNotes] = useState(garden?.notes || "");
   const [savingDetails, setSavingDetails] = useState(false);
   const [detailsError, setDetailsError] = useState(null);
 
   useEffect(() => {
-    setDraftName(garden?.name || "");
-    setDraftNotes(garden?.notes || "");
-  }, [garden?.id]);
+    if (selectedPlantingId && !plantings.some((p) => p.id === selectedPlantingId)) onSelectPlanting(null);
+  }, [selectedPlantingId, plantings, onSelectPlanting]);
 
   const detailsDirty =
     draftName !== (garden?.name || "") ||
@@ -140,11 +143,11 @@ export function PlantsTab({ garden, allGardens = [], onSwitchGarden, onCreateGar
         events={events}
         garden={garden}
         addEvent={addEvent}
-        addPlantingPhoto={addPlantingPhoto}
+        updateEvent={updateEvent}
+        deleteEvent={deleteEvent}
         showToast={showToast}
-        onBack={() => setSelectedPlantingId(null)}
-        onSelectPlanting={(id) => setSelectedPlantingId(id)}
-        onRequestManualEntry={onRequestManualEntry}
+        onBack={() => onSelectPlanting(null)}
+        onSelectPlanting={onSelectPlanting}
       />
     );
   }
@@ -339,7 +342,7 @@ export function PlantsTab({ garden, allGardens = [], onSwitchGarden, onCreateGar
 
       <div className="sg-plant-grid">
         {plantings.map((p) => (
-          <PlantCard key={p.id} planting={p} events={events} containers={containers} addPlantingPhoto={addPlantingPhoto} onOpen={() => setSelectedPlantingId(p.id)} />
+          <PlantCard key={p.id} planting={p} events={events} containers={containers} addPlantingPhoto={addPlantingPhoto} onOpen={() => onSelectPlanting(p.id)} />
         ))}
       </div>
     </section>

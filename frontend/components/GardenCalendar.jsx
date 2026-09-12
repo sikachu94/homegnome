@@ -7,15 +7,10 @@ const TYPE_ICON = { watering: Droplets, harvest: Scissors };
 const TYPE_LABEL = { watering: "Water", harvest: "Harvest" };
 const WEEKDAYS = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
 
-function dateKey(date) {
-    return date.toISOString().slice(0, 10);
-}
+function dateKey(date) { return date.toISOString().slice(0, 10); }
+function displayDate(dateKeyValue) { return new Date(`${dateKeyValue}T12:00:00.000Z`).toLocaleDateString(undefined, { weekday: "long", month: "long", day: "numeric" }); }
 
-function displayDate(dateKeyValue) {
-    return new Date(`${dateKeyValue}T12:00:00.000Z`).toLocaleDateString(undefined, { weekday: "long", month: "long", day: "numeric" });
-}
-
-export function GardenCalendar({ plantings, events, calendarTasks, onUpdateTask, onCompleteTask }) {
+export function GardenCalendar({ plantings, events, calendarTasks, onUpdateTask, onCompleteTask, onSelectPlanting }) {
     const today = dateKey(new Date());
     const [monthDate, setMonthDate] = useState(() => new Date(`${today}T12:00:00.000Z`));
     const [selectedDate, setSelectedDate] = useState(today);
@@ -74,7 +69,10 @@ export function GardenCalendar({ plantings, events, calendarTasks, onUpdateTask,
                         <div key={task.id} className={`sg-calendar-task ${task.status}`}>
                             <div className={`sg-calendar-task-icon ${task.type}`}><Icon size={16} /></div>
                             <div className="sg-calendar-task-body">
-                                <strong>{TYPE_LABEL[task.type]} {task.planting_name}</strong>
+                                <strong>
+                                    {TYPE_LABEL[task.type]}{" "}
+                                    <button type="button" className="sg-entity-link" onClick={() => onSelectPlanting?.(task.planting_id)}>{task.planting_name}</button>
+                                </strong>
                                 <span>{task.status === "completed" ? "Completed" : task.status === "skipped" ? "Skipped" : task.status === "snoozed" ? "Snoozed" : "Planned"}</span>
                             </div>
                             {task.status === "open" && (
@@ -91,7 +89,12 @@ export function GardenCalendar({ plantings, events, calendarTasks, onUpdateTask,
                 {selected.events.map((event) => (
                     <div key={event.id} className="sg-calendar-event">
                         <Check size={15} />
-                        <span><strong>{EVENT_TYPE_LABELS[event.event_type] || event.event_type}</strong> {labelForEntity(event, plantings, [])}</span>
+                        <span>
+                            <strong>{EVENT_TYPE_LABELS[event.event_type] || event.event_type}</strong>{" "}
+                            {event.entity_type === "planting" ? (
+                                <button type="button" className="sg-entity-link" onClick={() => onSelectPlanting?.(event.entity_id)}>{labelForEntity(event, plantings, [])}</button>
+                            ) : labelForEntity(event, plantings, [])}
+                        </span>
                     </div>
                 ))}
                 {selected.tasks.length === 0 && selected.events.length === 0 && <p className="sg-calendar-empty">Nothing planned or logged for this day.</p>}

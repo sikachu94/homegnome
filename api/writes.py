@@ -273,7 +273,37 @@ def append_event(
     event_data.pop("id", None)
     _verify_event_entity(db, garden_id, event_data)
     return {"event": _insert(db, "garden_events", event_data)}
+class EventUpdate(BaseModel):
+    model_config = ConfigDict(extra="allow")
+    payload: dict[str, Any] | None = None
+    note: str | None = None
+    media: list[str] | None = None
 
+
+@router.patch("/api/gardens/{garden_id}/events/{event_id}")
+def update_event(garden_id: str, event_id: str, update: EventUpdate, user_id: str = Depends(get_current_user), db = Depends(get_db)):
+    verify_garden_ownership(db, garden_id, user_id)
+    existing = db.table("garden_events").select("id").eq("id", event_id).eq("garden_id", garden_id).limit(1).execute()
+    if not existing.data:
+        raise HTTPException(status_code=404, detail="Event not found in garden")
+
+    values = update.model_dump(exclude_unset=True)
+    if not values:
+        raise HTTPException(status_code=422, detail="At least one field is required")
+    result = db.table("garden_events").update(values).eq("id", event_id).eq("garden_id", garden_id).execute()
+    if not result.data:
+        raise HTTPException(status_code=404, detail="Event not found in garden")
+    return {"event": result.data[0]}
+
+
+@router.delete("/api/gardens/{garden_id}/events/{event_id}", status_code=200)
+def delete_event(garden_id: str, event_id: str, user_id: str = Depends(get_current_user), db = Depends(get_db)):
+    verify_garden_ownership(db, garden_id, user_id)
+    existing = db.table("garden_events").select("id").eq("id", event_id).eq("garden_id", garden_id).limit(1).execute()
+    if not existing.data:
+        raise HTTPException(status_code=404, detail="Event not found in garden")
+    db.table("garden_events").delete().eq("id", event_id).eq("garden_id", garden_id).execute()
+    return {"deleted": event_id}
 
 @router.patch("/api/gardens/{garden_id}")
 def update_garden(

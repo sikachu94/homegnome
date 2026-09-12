@@ -108,3 +108,11 @@ export function apiCreateGarden(garden) {
 export function apiDeleteGarden(gardenId) {
   return deleteJSON(`/api/gardens/${gardenId}`);
 }
+
+export function apiUpdateEvent(gardenId, eventId, patch) {
+  return patchJSON(`/api/gardens/${gardenId}/events/${eventId}`, patch);
+}
+
+export function apiDeleteEvent(gardenId, eventId) {
+  return deleteJSON(`/api/gardens/${gardenId}/events/${eventId}`);
+}

@@ -1,40 +1,20 @@
 import { useState, useRef, useEffect } from "react";
-import { Mic, Square, Sparkles, Loader2, X, ImagePlus, ChevronDown, Plus, List, Calendar as CalendarIcon } from "lucide-react";
+import { Mic, Square, Sparkles, Loader2, X, ChevronDown, List, Calendar as CalendarIcon, Pencil, Trash2 } from "lucide-react";
 import { apiExtract } from "../api.js";
-import {
-  scopeOf, buildEvent, labelForEntity, labelForEventType, quickLogEvent, isAlertEvent, describeEventPayload,
-  MANUAL_ENTRY_TYPES, MANUAL_ENTRY_LABELS, MANUAL_ENTRY_FIELDS, buildManualEvents,
-} from "../lib/events.js";
+import { scopeOf, buildEvent, labelForEntity, labelForEventType, quickLogEvent, isAlertEvent, describeEventPayload } from "../lib/events.js";
 import { uid, fmtTime, groupByDay } from "../lib/format.js";
 import { fileToDataUrl } from "../lib/imageUtils.js";
 import { EventIcon } from "./EventIcon.jsx";
 import { Reminders } from "./Reminders.jsx";
-import { buildReminders, pickPriorityPlanting } from "../lib/reminders.js";
+import { buildReminders } from "../lib/reminders.js";
 import { GardenCalendar } from "./GardenCalendar.jsx";
+import { LogEntryForm } from "./LogEntryForm.jsx";
 
-// How many of the most recent events to consider when building the day
-// groups below — high enough that the "collapse older days" behavior has
-// something real to collapse, without loading the whole history.
 const RECENT_EVENT_WINDOW = 25;
 
-// Default plant selection for the manual form: whoever's already flagged by
-// a reminder for this action type, falling back to the single priority
-// plant (same "whoever needs it most" logic the old quick actions used).
-function defaultTargetsForType(type, plantings, events, weather) {
-  const kindByType = { watering: "water", harvest: "harvest", pest_sighting: "issue", disease_sighting: "issue" };
-  const kind = kindByType[type];
-  if (kind) {
-    const flagged = buildReminders(plantings, events, weather)
-      .filter((r) => r.kind === kind)
-      .map((r) => r.planting_id);
-    if (flagged.length) return new Set(flagged);
-  }
-  const fallback = pickPriorityPlanting(plantings, events, weather);
-  return fallback ? new Set([fallback.id]) : new Set();
-}
-
 export function CaptureTab({
-  gardenId, plantings, containers, events, addEvent, resetSignal, showToast, weather, onNewPlant, manualEntryRequest,
+  gardenId, plantings, containers, events, addEvent, updateEvent, deleteEvent,
+  resetSignal, showToast, weather, onSelectPlanting,
   calendarTasks, onUpdateTask, onCompleteTask,
 }) {
   const [note, setNote] = useState("");
@@ -45,95 +25,22 @@ export function CaptureTab({
   const [extractError, setExtractError] = useState(null);
   const [savingDraftId, setSavingDraftId] = useState(null);
   const [savingAll, setSavingAll] = useState(false);
-  const [quickBusy, setQuickBusy] = useState(null);
   const recognitionRef = useRef(null);
-  const photoInputRef = useRef(null);
-  const manualFormRef = useRef(null);
 
-  // Toggle between the day-grouped activity log and the calendar view — the
-  // two ways of looking at the same underlying event/task data, sharing this
-  // section of the Log tab instead of living in a separate top-level tab.
   const [logView, setLogView] = useState("activity");
-
-  // Manual log-entry form state — the primary, non-AI way to log activity.
-  // manualFormOpen/manualMoreOpen keep the form collapsed to a slim trigger
-  // row until someone actually wants to log something, instead of an
-  // always-open card taking up most of the tab.
-  const [manualFormOpen, setManualFormOpen] = useState(false);
-  const [manualMoreOpen, setManualMoreOpen] = useState(false);
-  const [manualType, setManualType] = useState("watering");
-  const [manualTargets, setManualTargets] = useState(() => new Set());
-  const [manualValues, setManualValues] = useState({});
-  const [manualNote, setManualNote] = useState("");
-  const [manualPhoto, setManualPhoto] = useState(null);
-  const [manualSaving, setManualSaving] = useState(false);
+  const [editingEvent, setEditingEvent] = useState(null);
 
   const notify = (message, kind = "success") => showToast?.(message, kind);
 
   const sortedEvents = [...events].sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp)).slice(0, RECENT_EVENT_WINDOW);
   const dayGroups = groupByDay(sortedEvents);
-
-  // Today + yesterday (the first two day-groups at mount) start open; older
-  // days start collapsed into a summary row — see the plan's Phase 3 notes
-  // on treating the log as a scan, not a wall of rows.
   const [expandedDays, setExpandedDays] = useState(() => new Set(dayGroups.slice(0, 2).map((g) => g.label)));
 
-  const selectManualType = (type) => {
-    setManualType(type);
-    setManualTargets(defaultTargetsForType(type, plantings, events, weather));
-    setManualValues({});
-    setManualNote("");
-    setManualPhoto(null);
-    setManualMoreOpen(false);
-  };
-
-  // Opens the form (if it's collapsed), switches it to the given type, and
-  // optionally scopes it to one plant — the single entry point used by the
-  // trigger chips below, the Measure/Pest quick actions, and cross-tab
-  // requests from a plant's detail page.
-  const openManualEntry = (type, plantingId) => {
-    selectManualType(type);
-    if (plantingId) setManualTargets(new Set([plantingId]));
-    setManualFormOpen(true);
-    requestAnimationFrame(() => manualFormRef.current?.scrollIntoView({ behavior: "smooth", block: "start" }));
-  };
-
-  const closeManualEntry = () => setManualFormOpen(false);
-
-  // Tapping the already-open type's chip again collapses the form, so the
-  // trigger row doubles as an open/close control.
-  const handleTriggerClick = (type) => {
-    if (manualFormOpen && manualType === type) { closeManualEntry(); return; }
-    openManualEntry(type);
-  };
-
-  // Populate an initial default selection once plantings are available —
-  // selectManualType only runs from then on when the person picks a chip,
-  // switches tabs elsewhere, or a "Measure"/"Pest" quick action jumps here.
-  useEffect(() => {
-    setManualTargets((prev) => (prev.size ? prev : defaultTargetsForType(manualType, plantings, events, weather)));
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [plantings.length]);
-
-  // A "Measure" / "Pest or disease" quick action on a specific plant's
-  // detail page (PlantDetail.jsx) routes here via App's manualEntryRequest,
-  // scoped to that one plant instead of the tab's own priority plant.
-  useEffect(() => {
-    if (!manualEntryRequest) return;
-    openManualEntry(manualEntryRequest.type, manualEntryRequest.plantingId);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [manualEntryRequest]);
-
-  // Demo reset clears drafts, collapses days back to the default state,
-  // resets the manual form to its default type/target, and returns the
-  // Recent activity/Calendar toggle to its default view — in-progress free
-  // text is left alone, same as before.
   useEffect(() => {
     setDrafts([]);
     setNoteExpanded(false);
     setExpandedDays(new Set(dayGroups.slice(0, 2).map((g) => g.label)));
-    selectManualType("watering");
-    setManualFormOpen(false);
+    setEditingEvent(null);
     setLogView("activity");
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [resetSignal]);
@@ -146,7 +53,6 @@ export function CaptureTab({
   const dayHasAlert = (group) => group.items.some((e) => isAlertEvent(e.event_type));
 
   const reminders = buildReminders(plantings, events, weather);
-  const priorityPlanting = plantings.length ? pickPriorityPlanting(plantings, events, weather) : null;
 
   const handleLogWatering = async (plantingId) => {
     try {
@@ -157,108 +63,42 @@ export function CaptureTab({
     }
   };
 
-  const runQuickAction = async (eventType) => {
-    if (!priorityPlanting) return;
-    setQuickBusy(eventType);
+  const handleDeleteEvent = async (eventId) => {
+    if (!window.confirm("Delete this log entry? This can't be undone.")) return;
     try {
-      await addEvent(quickLogEvent(eventType, priorityPlanting.id, gardenId));
-      notify(`${labelForEventType(eventType)} — ${priorityPlanting.nickname}.`);
+      await deleteEvent(eventId);
+      notify("Entry deleted.");
     } catch (err) {
-      notify("Couldn't save that — try again.", "error");
-    } finally {
-      setQuickBusy(null);
+      notify("Couldn't delete that — try again.", "error");
     }
   };
 
-  const handleQuickPhoto = async (file) => {
-    if (!file || !priorityPlanting) return;
-    setQuickBusy("photo_log");
+  const runExtraction = async () => {
+    if (!note.trim()) return;
+    setExtracting(true); setExtractError(null);
     try {
-      const dataUrl = await fileToDataUrl(file);
-      await addEvent(quickLogEvent("photo_log", priorityPlanting.id, gardenId, { media: [dataUrl] }));
-      notify(`Photo added — ${priorityPlanting.nickname}.`);
+      const { drafts: rawDrafts } = await apiExtract(gardenId, note);
+      const withIds = (rawDrafts || []).map((d) => ({ ...d, draft_id: uid("draft"), media: [] }));
+      setDrafts(withIds);
+      if (!withIds.length) notify("Nothing to log in that note — try describing an action, like watering or a pest.", "error");
     } catch (err) {
-      notify("Couldn't attach that photo — try again.", "error");
-    } finally {
-      setQuickBusy(null);
+      setExtractError("Couldn't read your note just now. Check your connection and that you're signed in, then try again.");
+    } finally { setExtracting(false); }
+  };
+
+  function summarizeDraft(d) {
+    const p = d.payload || {};
+    switch (d.event_type) {
+      case "watering": return `Watered${p.amount_l ? ` — ${p.amount_l}L` : ""}${p.method ? `, by ${p.method}` : ""}.`;
+      case "harvest": return `Harvested${p.quantity ? ` ${p.quantity}${p.unit ? ` ${p.unit}` : ""}` : ""}${p.quality ? `, ${p.quality} quality` : ""}.`;
+      case "pest_sighting": return `Spotted ${p.pest || "a pest"}${p.severity ? `, ${p.severity} severity` : ""}.`;
+      case "disease_sighting": return `Signs of ${p.disease || "disease"}${p.severity ? `, ${p.severity}` : ""}.`;
+      case "rainfall": return `${p.amount_mm ? `${p.amount_mm}mm of rain` : "Rain"} recorded.`;
+      case "frost": return `Frost${p.severity ? ` (${p.severity})` : ""} recorded.`;
+      case "growth_measurement": return `${p.metric || "Measurement"}: ${p.value ?? "—"}${p.unit ? ` ${p.unit}` : ""}.`;
+      default: return "New entry.";
     }
-  };
-
-  // "Measure" and "Pest / disease" can't log blind (no meaningful default
-  // payload), so they jump to the manual form pre-scoped to the priority
-  // plant instead of firing an event immediately.
-  const focusManualEntry = (type) => {
-    openManualEntry(type, priorityPlanting?.id);
-  };
-
-  const toggleTarget = (plantingId) => setManualTargets((prev) => {
-    const next = new Set(prev);
-    if (manualType === "photo_log") {
-      next.clear();
-      next.add(plantingId);
-      return next;
-    }
-    if (next.has(plantingId)) next.delete(plantingId); else next.add(plantingId);
-    return next;
-  });
-  const selectAllTargets = () => setManualTargets(new Set(plantings.map((p) => p.id)));
-
-  const attachManualPhoto = async (file) => {
-    if (!file) return;
-    try {
-      const dataUrl = await fileToDataUrl(file);
-      setManualPhoto(dataUrl);
-    } catch (err) { console.error(err); }
-  };
-
-  const saveManualEntry = async () => {
-    if (!manualTargets.size) return;
-    if (manualType === "photo_log" && !manualPhoto) return;
-    setManualSaving(true);
-    const gardenScoped = scopeOf(manualType) === "garden";
-    if (!gardenScoped && !manualTargets.size) return;
-    if (manualType === "photo_log" && !manualPhoto) return;
-    try {
-      const fields = MANUAL_ENTRY_FIELDS[manualType] || [];
-      const payload = {};
-      for (const field of fields) {
-        const raw = manualValues[field.key];
-        if (raw === undefined || raw === "") continue;
-        payload[field.key] = field.kind === "number" ? Number(raw) : raw;
-      }
-      const built = buildManualEvents({
-        eventType: manualType,
-        gardenId,
-        plantingIds: Array.from(manualTargets),
-        payload,
-        note: manualNote.trim(),
-        media: manualPhoto ? [manualPhoto] : undefined,
-      });
-      await addEvent(built);
-      notify(`Logged ${MANUAL_ENTRY_LABELS[manualType].toLowerCase()} for ${built.length} ${built.length === 1 ? "plant" : "plants"}.`);
-      setManualValues({});
-      setManualNote("");
-      setManualPhoto(null);
-      setManualMoreOpen(false);
-      setManualFormOpen(false);
-    } catch (err) {
-      notify("Couldn't save that — try again.", "error");
-    } finally {
-      setManualSaving(false);
-    }
-    const built = buildManualEvents({
-      eventType: manualType,
-      gardenId,
-      plantingIds: gardenScoped ? [] : Array.from(manualTargets),
-      payload,
-      note: manualNote.trim(),
-      media: manualPhoto ? [manualPhoto] : undefined,
-    });
-    await addEvent(built);
-    notify(gardenScoped ? "Logged for the whole garden." : `Logged ${MANUAL_ENTRY_LABELS[manualType].toLowerCase()} for ${built.length} ${built.length === 1 ? "plant" : "plants"}.`);
-
-
-  };
+  }
 
   const speechSupported = typeof window !== "undefined" && (window.SpeechRecognition || window.webkitSpeechRecognition);
   const toggleListening = () => {
@@ -272,45 +112,6 @@ export function CaptureTab({
     rec.onerror = () => setListening(false);
     recognitionRef.current = rec; rec.start(); setListening(true);
   };
-
-  const runExtraction = async () => {
-    if (!note.trim()) return;
-    setExtracting(true); setExtractError(null);
-    try {
-      // api/extract.py resolves "known plantings" for GARDEN_ID straight
-      // from Supabase's `plantings` table, so drafts will only match
-      // plantings that actually exist there — not the local demo/seed
-      // plantings this app keeps in localStorage (see hooks/useGardenData.js).
-      const { drafts: rawDrafts } = await apiExtract(gardenId, note);
-      const withIds = (rawDrafts || []).map((d) => ({ ...d, draft_id: uid("draft"), media: [] }));
-      setDrafts(withIds);
-      if (!withIds.length) notify("Nothing to log in that note — try describing an action, like watering or a pest.", "error");
-    } catch (err) {
-      setExtractError("Couldn't read your note just now. Check your connection and that you're signed in, then try again.");
-    } finally { setExtracting(false); }
-  };
-
-  function summarizeDraft(d) {
-    const p = d.payload || {};
-    switch (d.event_type) {
-      case "watering":
-        return `Watered${p.amount_l ? ` — ${p.amount_l}L` : ""}${p.method ? `, by ${p.method}` : ""}.`;
-      case "harvest":
-        return `Harvested${p.quantity ? ` ${p.quantity}${p.unit ? ` ${p.unit}` : ""}` : ""}${p.quality ? `, ${p.quality} quality` : ""}.`;
-      case "pest_sighting":
-        return `Spotted ${p.pest || "a pest"}${p.severity ? `, ${p.severity} severity` : ""}.`;
-      case "disease_sighting":
-        return `Signs of ${p.disease || "disease"}${p.severity ? `, ${p.severity}` : ""}.`;
-      case "rainfall":
-        return `${p.amount_mm ? `${p.amount_mm}mm of rain` : "Rain"} recorded.`;
-      case "frost":
-        return `Frost${p.severity ? ` (${p.severity})` : ""} recorded.`;
-      case "growth_measurement":
-        return `${p.metric || "Measurement"}: ${p.value ?? "—"}${p.unit ? ` ${p.unit}` : ""}.`;
-      default:
-        return "New entry.";
-    }
-  }
 
   const updateDraftPlanting = (draftId, plantingId) => setDrafts((ds) => ds.map((d) => (d.draft_id === draftId ? { ...d, planting_id: plantingId } : d)));
   const discardDraft = (draftId) => setDrafts((ds) => ds.filter((d) => d.draft_id !== draftId));
@@ -364,137 +165,12 @@ export function CaptureTab({
         </div>
       )}
 
-      <div className="sg-manual-section" ref={manualFormRef}>
-        <p className="sg-form-label" style={{ margin: "18px 0 8px" }}>Log entry</p>
-
-        <div className="sg-entry-trigger-row">
-          {MANUAL_ENTRY_TYPES.map((type) => (
-            <button
-              key={type}
-              type="button"
-              className={`sg-entry-trigger-chip${manualFormOpen && manualType === type ? " active" : ""}`}
-              onClick={() => handleTriggerClick(type)}
-              aria-pressed={manualFormOpen && manualType === type}
-            >
-              <EventIcon type={type} size={28} />
-              <span>{MANUAL_ENTRY_LABELS[type]}</span>
-            </button>
-          ))}
-        </div>
-
-        {manualFormOpen && (
-          <div className="sg-entry-sheet">
-            <div className="sg-entry-sheet-head">
-              <span>{MANUAL_ENTRY_LABELS[manualType]}</span>
-              <button className="sg-icon-btn" onClick={closeManualEntry} aria-label="Close log entry form"><X size={16} /></button>
-            </div>
-            {scopeOf(manualType) !== "garden" && (
-              <div className="sg-entry-targets">
-                <div className="sg-target-header">
-                  <span className="sg-form-label">Which plant{manualType !== "photo_log" ? "s" : ""}?</span>
-                  {manualType !== "photo_log" && plantings.length > 1 && (
-                    <button className="sg-select-all" onClick={selectAllTargets}>Select all</button>
-                  )}
-                </div>
-                {plantings.length === 0 ? (
-                  <p className="sg-empty">Add a plant first — see the Garden tab.</p>
-                ) : (
-                  <div className="sg-target-chips">
-                    {plantings.map((p) => (
-                      <button
-                        key={p.id}
-                        type="button"
-                        className={`sg-chip${manualTargets.has(p.id) ? " active" : ""}`}
-                        aria-pressed={manualTargets.has(p.id)}
-                        onClick={() => toggleTarget(p.id)}
-                      >
-                        {p.nickname}
-                      </button>
-                    ))}
-                  </div>
-                )}
-              </div>
-            )}
-
-            {MANUAL_ENTRY_FIELDS[manualType].length > 0 && (
-              <div className="sg-entry-fields">
-                {MANUAL_ENTRY_FIELDS[manualType].map((field) => (
-                  <label key={field.key} className="sg-entry-field">
-                    <span>{field.label}</span>
-                    {field.kind === "select" ? (
-                      <select
-                        value={manualValues[field.key] || ""}
-                        onChange={(e) => setManualValues((v) => ({ ...v, [field.key]: e.target.value }))}
-                      >
-                        <option value="">—</option>
-                        {field.options.map((opt) => <option key={opt} value={opt}>{opt}</option>)}
-                      </select>
-                    ) : (
-                      <input
-                        type={field.kind}
-                        placeholder={field.placeholder || ""}
-                        value={manualValues[field.key] || ""}
-                        onChange={(e) => setManualValues((v) => ({ ...v, [field.key]: e.target.value }))}
-                      />
-                    )}
-                  </label>
-                ))}
-              </div>
-            )}
-
-            {manualType === "photo_log" && (
-              <div className="sg-draft-row">
-                {manualPhoto ? (
-                  <div className="sg-photo-thumb"><img src={manualPhoto} alt="attached" /><button onClick={() => setManualPhoto(null)}><X size={10} /></button></div>
-                ) : (
-                  <label className="sg-photo-add wide">
-                    <ImagePlus size={13} /> Add a photo
-                    <input type="file" accept="image/*" hidden onChange={(e) => attachManualPhoto(e.target.files?.[0])} />
-                  </label>
-                )}
-              </div>
-            )}
-
-            {!manualMoreOpen ? (
-              <button className="sg-note-toggle" onClick={() => setManualMoreOpen(true)}>
-                <Plus size={13} /> Add a note{manualType !== "photo_log" ? " or photo" : ""} (optional)
-              </button>
-            ) : (
-              <div className="sg-entry-more">
-                <textarea
-                  className="sg-manual-note"
-                  placeholder="Add a note (optional)"
-                  rows={2}
-                  value={manualNote}
-                  onChange={(e) => setManualNote(e.target.value)}
-                  autoFocus
-                />
-                {manualType !== "photo_log" && (
-                  <div className="sg-draft-row">
-                    {manualPhoto ? (
-                      <div className="sg-photo-thumb"><img src={manualPhoto} alt="attached" /><button onClick={() => setManualPhoto(null)}><X size={10} /></button></div>
-                    ) : (
-                      <label className="sg-photo-add wide">
-                        <ImagePlus size={13} /> Add a photo
-                        <input type="file" accept="image/*" hidden onChange={(e) => attachManualPhoto(e.target.files?.[0])} />
-                      </label>
-                    )}
-                  </div>
-                )}
-              </div>
-            )}
-
-            <button
-              className="sg-primary sg-entry-submit"
-              disabled={manualSaving || (scopeOf(manualType) !== "garden" && manualTargets.size === 0) || (manualType === "photo_log" && !manualPhoto)}
-              onClick={saveManualEntry}
-            >
-              {manualSaving ? <Loader2 className="spin" size={14} /> : null}
-              {scopeOf(manualType) === "garden" ? "Log for the whole garden" : `Log for ${manualTargets.size} ${manualTargets.size === 1 ? "plant" : "plants"}`}
-            </button>
-          </div>
-        )}
-      </div>
+      <p className="sg-form-label" style={{ margin: "18px 0 8px" }}>Log entry</p>
+      <LogEntryForm
+        gardenId={gardenId} plantings={plantings} events={events} weather={weather}
+        addEvent={addEvent} updateEvent={updateEvent} notify={notify}
+        editingEvent={editingEvent} onDoneEditing={() => setEditingEvent(null)}
+      />
 
       {!noteExpanded ? (
         <button className="sg-note-toggle" onClick={() => setNoteExpanded(true)}>
@@ -562,22 +238,10 @@ export function CaptureTab({
       <div className="sg-recent">
         <div className="sg-recent-head">
           <div className="sg-view-toggle" role="tablist" aria-label="Log view">
-            <button
-              type="button"
-              role="tab"
-              aria-selected={logView === "activity"}
-              className={`sg-view-toggle-btn${logView === "activity" ? " active" : ""}`}
-              onClick={() => setLogView("activity")}
-            >
+            <button type="button" role="tab" aria-selected={logView === "activity"} className={`sg-view-toggle-btn${logView === "activity" ? " active" : ""}`} onClick={() => setLogView("activity")}>
               <List size={13} /> Recent activity
             </button>
-            <button
-              type="button"
-              role="tab"
-              aria-selected={logView === "calendar"}
-              className={`sg-view-toggle-btn${logView === "calendar" ? " active" : ""}`}
-              onClick={() => setLogView("calendar")}
-            >
+            <button type="button" role="tab" aria-selected={logView === "calendar"} className={`sg-view-toggle-btn${logView === "calendar" ? " active" : ""}`} onClick={() => setLogView("calendar")}>
               <CalendarIcon size={13} /> Calendar
             </button>
           </div>
@@ -585,11 +249,9 @@ export function CaptureTab({
 
         {logView === "calendar" ? (
           <GardenCalendar
-            plantings={plantings}
-            events={events}
-            calendarTasks={calendarTasks}
-            onUpdateTask={onUpdateTask}
-            onCompleteTask={onCompleteTask}
+            plantings={plantings} events={events} calendarTasks={calendarTasks}
+            onUpdateTask={onUpdateTask} onCompleteTask={onCompleteTask}
+            onSelectPlanting={onSelectPlanting}
           />
         ) : dayGroups.length === 0 ? (
           <div className="sg-empty">Nothing logged yet. Try a quick action above, or write a note.</div>
@@ -611,16 +273,28 @@ export function CaptureTab({
                   const isAlert = isAlertEvent(e.event_type);
                   const entityLabel = labelForEntity(e, plantings, containers);
                   const detail = describeEventPayload(e.event_type, e.payload);
+                  const plantingId = e.entity_type === "planting" ? e.entity_id : null;
                   return (
                     <div key={e.id} className={`sg-event-row ${isAlert ? "alert" : ""}`}>
                       <EventIcon type={e.event_type} />
                       <div className="sg-event-body">
                         <div className="sg-event-title">{labelForEventType(e.event_type)}</div>
-                        <div className="sg-event-meta">{detail ? `${entityLabel} · ${detail}` : entityLabel}</div>
+                        <div className="sg-event-meta">
+                          {plantingId ? (
+                            <button type="button" className="sg-entity-link" onClick={() => onSelectPlanting?.(plantingId)}>{entityLabel}</button>
+                          ) : entityLabel}
+                          {detail ? ` · ${detail}` : ""}
+                        </div>
                         {e.note && <div className="sg-event-note">"{e.note}"</div>}
                         {e.media?.length ? <img className="sg-event-thumb" src={e.media[0]} alt="" /> : null}
                       </div>
-                      <div className="sg-event-time">{fmtTime(e.timestamp)}</div>
+                      <div className="sg-event-row-side">
+                        <div className="sg-event-time">{fmtTime(e.timestamp)}</div>
+                        <div className="sg-event-row-actions">
+                          <button className="sg-icon-btn xs" onClick={() => setEditingEvent(e)} aria-label="Edit entry"><Pencil size={13} /></button>
+                          <button className="sg-icon-btn xs" onClick={() => handleDeleteEvent(e.id)} aria-label="Delete entry"><Trash2 size={13} /></button>
+                        </div>
+                      </div>
                     </div>
                   );
                 })}
@@ -629,7 +303,7 @@ export function CaptureTab({
           })
         )}
       </div>
-      <p className="sg-footnote">Saved entries can't be edited yet — add a new one if something needs correcting.</p>
+      <p className="sg-footnote">Tap the pencil to edit an entry, or the trash icon to remove it.</p>
     </section>
   );
 }

@@ -3,8 +3,7 @@ import { storageGet, storageSet } from "../lib/storage.js";
 import { uid } from "../lib/format.js";
 import { fileToDataUrl } from "../lib/imageUtils.js";
 import { GARDEN_ID, DEFAULT_GARDEN } from "../lib/seedData.js";
-import { apiGardens, apiCreateEvent, apiCreatePlanting, apiUpdateGarden, apiCreateGarden, apiDeleteGarden } from "../api.js";
-
+import { apiGardens, apiCreateEvent, apiCreatePlanting, apiUpdateGarden, apiCreateGarden, apiDeleteGarden, apiUpdateEvent, apiDeleteEvent } from "../api.js";
 /**
  * Owns plantings/containers/events/garden state and their persistence.
  * Supabase is the source of truth. Local storage is only used as an offline
@@ -234,6 +233,20 @@ export function useGardenData() {
     setAllGardens(list);
     if (targetId === gardenId && list[0]) await applyGarden(list[0]);
   }, [applyGarden, gardenId]);
+  
+  const updateEvent = useCallback(async (eventId, patch) => {
+  await apiUpdateEvent(gardenId, eventId, patch);
+  const response = await apiGardens();
+  const remoteGarden = response.gardens?.find((item) => item.id === gardenId);
+  if (remoteGarden) await applyGarden(remoteGarden);
+}, [applyGarden, gardenId]);
+
+  const deleteEvent = useCallback(async (eventId) => {
+  await apiDeleteEvent(gardenId, eventId);
+  const response = await apiGardens();
+  const remoteGarden = response.gardens?.find((item) => item.id === gardenId);
+  if (remoteGarden) await applyGarden(remoteGarden);
+}, [applyGarden, gardenId]);
 
   return {
     loaded, loadError, plantings, containers, events, calendarTasks, garden, gardenId,
@@ -241,6 +254,7 @@ export function useGardenData() {
     updateCalendarTask, completeCalendarTask,
     updateGardenLocal, updateGardenAndPersist, persistGarden,
     allGardens, switchGarden, createGarden, deleteGarden,
+    updateEvent, deleteEvent,
     resetDemo,
     refresh,
   };

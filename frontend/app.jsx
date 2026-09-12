@@ -11,10 +11,6 @@ import { PlantsTab } from "./components/PlantsTab.jsx";
 import { ChatTab } from "./components/ChatTab.jsx";
 import { useToast, Toast } from "./lib/toast.jsx";
 
-// Shorter labels for the bottom nav (mockup); top nav keeps the fuller labels
-// on wider screens where there's room.
-// Calendar used to be its own tab; it now lives inside the Log tab as a
-// toggleable view next to "Recent activity" (see CaptureTab.jsx).
 const TABS = [
   { id: "capture", icon: NotebookPen, shortLabel: "Log" },
   { id: "plants", icon: Sprout, shortLabel: "Garden" },
@@ -27,15 +23,23 @@ export default function App() {
   const { toast, showToast } = useToast();
   const [showLanding, setShowLanding] = useState(true);
 
+  // Owned here (not inside PlantsTab) so the Log tab / Calendar can jump
+  // straight to a plant's detail page, and the Garden nav button can
+  // reliably reset it back to the garden list.
+  const [selectedPlantingId, setSelectedPlantingId] = useState(null);
+  const goToPlant = (plantingId) => {
+    setSelectedPlantingId(plantingId);
+    setTab("plants");
+  };
+
   const {
     loaded, loadError, plantings, containers, events, calendarTasks, garden, gardenId,
     allGardens, switchGarden, createGarden, deleteGarden,
-    addEvent, addPlanting, addPlantingPhoto,
+    addEvent, addPlanting, addPlantingPhoto, updateEvent, deleteEvent,
     updateCalendarTask, completeCalendarTask,
     updateGardenLocal, updateGardenAndPersist, persistGarden,
     resetDemo: resetGardenData, refresh: refreshGardenData,
   } = useGardenData();
-
 
   const {
     weather, weatherError, locating,
@@ -51,6 +55,7 @@ export default function App() {
     try {
       await resetGardenData();
       resetWeather();
+      setSelectedPlantingId(null);
       setResetKey((k) => k + 1);
       showToast("Demo data reset.");
     } catch (err) {
@@ -122,16 +127,13 @@ export default function App() {
         </div>
       )}
 
-
-      {/* All tabs stay mounted (toggled with `hidden`, not unmounted via
-          `&&`) so in-progress state -- the capture note/drafts, the chat
-          thread, the add-planting form, the calendar's selected month/day --
-          survives switching tabs. */}
       <main className="sg-main">
         <div hidden={tab !== "capture"}>
           <CaptureTab
             gardenId={gardenId} plantings={plantings} containers={containers} events={events}
-            addEvent={addEvent} resetSignal={resetKey} showToast={showToast} weather={weather}
+            addEvent={addEvent} updateEvent={updateEvent} deleteEvent={deleteEvent}
+            resetSignal={resetKey} showToast={showToast} weather={weather}
+            onSelectPlanting={goToPlant}
             calendarTasks={calendarTasks} onUpdateTask={updateCalendarTask} onCompleteTask={completeCalendarTask}
           />
         </div>
@@ -140,10 +142,12 @@ export default function App() {
             garden={garden} allGardens={allGardens}
             onSwitchGarden={switchGarden} onCreateGarden={createGarden} onDeleteGarden={deleteGarden}
             plantings={plantings} containers={containers} events={events}
-            addPlanting={addPlanting} addPlantingPhoto={addPlantingPhoto} addEvent={addEvent}
+            addPlanting={addPlanting} addPlantingPhoto={addPlantingPhoto}
+            addEvent={addEvent} updateEvent={updateEvent} deleteEvent={deleteEvent}
             weather={weather}
             updateGardenLocal={updateGardenLocal} updateGardenAndPersist={updateGardenAndPersist}
             persistGarden={persistGarden} showToast={showToast}
+            selectedPlantingId={selectedPlantingId} onSelectPlanting={setSelectedPlantingId}
           />
         </div>
         <div hidden={tab !== "chat"}>
@@ -154,14 +158,18 @@ export default function App() {
         </div>
       </main>
 
-      {/* Bottom nav: mobile only (CSS hides it above 640px, shows .sg-tabs instead) */}
       <nav className="sg-bottom-nav" aria-label="Primary">
         <div className="sg-bottom-nav-row">
           {TABS.map(({ id, icon: Icon, shortLabel }) => (
             <button
               key={id}
               className={tab === id ? "active" : ""}
-              onClick={() => setTab(id)}
+              onClick={() => {
+                // Always land on the garden list, never a plant's zoomed-in
+                // page, when the Garden tab is tapped from the bottom nav.
+                if (id === "plants") setSelectedPlantingId(null);
+                setTab(id);
+              }}
               aria-label={shortLabel}
               aria-current={tab === id ? "page" : undefined}
             >

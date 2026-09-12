@@ -10,7 +10,7 @@ const ICON_BY_TYPE = {
   frost: Snowflake,
   photo_log: Camera,
   growth_measurement: Ruler,
-  garden_note: NotebookPen,
+  garden_event: NotebookPen,
 };
 
 // Which color a given event's stamp gets. Alerts (see isAlertEvent) always

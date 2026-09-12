@@ -11,7 +11,7 @@ export const EVENT_TYPES = {
   photo_log: { category: "observation", scope: "planting", fields: "(no payload — just a photo)" },
   rainfall: { category: "measurement", scope: "garden", fields: "amount_mm" },
   frost: { category: "observation", scope: "garden", fields: "severity?" },
-  garden_note: { category: "observation", scope: "garden", fields: "note" },
+  garden_event: { category: "observation", scope: "garden", fields: "note" },
 };
 
 export const scopeOf = (eventType) => EVENT_TYPES[eventType]?.scope || "planting";
@@ -44,7 +44,7 @@ export const EVENT_TYPE_LABELS = {
   relocated: "Moved",
   soil_amended: "Soil changed",
   transplanted: "Transplanted",
-  garden_note: "Garden note"
+  garden_event: "Garden Event"
 };
 
 export function labelForEventType(eventType) {
@@ -71,7 +71,7 @@ export const MANUAL_ENTRY_LABELS = {
   growth_measurement: "Measurement",
   pest_sighting: "Pest",
   disease_sighting: "Disease",
-  garden_note: "Garden Event",
+  garden_event: "Garden Event",
   photo_log: "Photo",
 };
 
