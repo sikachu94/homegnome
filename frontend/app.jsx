@@ -1,9 +1,10 @@
 import React, { useState } from "react";
-import { Sprout, NotebookPen, MessageCircle, RotateCcw, MapPin, CloudRain, Thermometer, Loader as Loader2 } from "lucide-react";
+import { Sprout, NotebookPen, MessageCircle, RotateCcw, MapPin, CloudRain, Thermometer, Loader as Loader2, LogOut } from "lucide-react";
 import gnomeLogo from "./assets/gnome_only.jpg";
 import "./styles.css";
+import { useAuth } from "./hooks/useAuth.js";
+import { AuthScreen } from "./components/AuthScreen.jsx";
 import { useGardenData } from "./hooks/useGardenData.js";
-import { LandingPage } from "./components/LandingPage.jsx";
 import { useWeather } from "./hooks/useWeather.js";
 import { PRESET_LOCATIONS } from "./lib/species.js";
 import { CaptureTab } from "./components/CaptureTab.jsx";
@@ -21,7 +22,8 @@ export default function App() {
   const [tab, setTab] = useState("capture");
   const [resetKey, setResetKey] = useState(0);
   const { toast, showToast } = useToast();
-  const [showLanding, setShowLanding] = useState(true);
+
+  const auth = useAuth();
 
   // Owned here (not inside PlantsTab) so the Log tab / Calendar can jump
   // straight to a plant's detail page, and the Garden nav button can
@@ -32,6 +34,9 @@ export default function App() {
     setTab("plants");
   };
 
+  // All hooks run on every render regardless of auth state (rules of
+  // hooks) — useGardenData just no-ops internally until authEnabled flips
+  // to true, so nothing fetches before someone is actually signed in.
   const {
     loaded, loadError, plantings, containers, events, calendarTasks, garden, gardenId,
     allGardens, switchGarden, createGarden, deleteGarden,
@@ -39,7 +44,7 @@ export default function App() {
     updateCalendarTask, completeCalendarTask,
     updateGardenLocal, updateGardenAndPersist, persistGarden,
     resetDemo: resetGardenData, refresh: refreshGardenData,
-  } = useGardenData();
+  } = useGardenData(!!auth.session);
 
   const {
     weather, weatherError, locating,
@@ -47,8 +52,24 @@ export default function App() {
     refresh: refreshWeather, reset: resetWeather,
   } = useWeather({ garden, events: events || [], addEvent, updateGardenAndPersist });
 
-  if (showLanding) {
-    return <LandingPage onGetStarted={() => setShowLanding(false)} />;
+  if (auth.loading) {
+    return (
+      <div className="sg-root sg-loading">
+        <Loader2 className="spin" size={22} /><span>Loading…</span>
+      </div>
+    );
+  }
+
+  if (!auth.session) {
+    return (
+      <AuthScreen
+        signInWithGoogle={auth.signInWithGoogle}
+        signInWithEmail={auth.signInWithEmail}
+        signUpWithEmail={auth.signUpWithEmail}
+        sendMagicLink={auth.sendMagicLink}
+        authError={auth.authError}
+      />
+    );
   }
 
   const resetDemo = async () => {
@@ -61,6 +82,12 @@ export default function App() {
     } catch (err) {
       showToast("Couldn't reset demo data — try again.", "error");
     }
+  };
+
+  const handleSignOut = async () => {
+    await auth.signOut();
+    setSelectedPlantingId(null);
+    setTab("capture");
   };
 
   if (!loaded) {
@@ -86,9 +113,19 @@ export default function App() {
 
       <header className="sg-header">
         <div className="sg-brand"><img src={gnomeLogo} alt="myGnomie logo" /><span>myGnomie</span></div>
-        <button className="sg-reset" onClick={resetDemo} title="Reset demo data" aria-label="Reset demo data">
-          <RotateCcw size={14} />
-        </button>
+        <div className="sg-header-actions">
+          <button className="sg-reset" onClick={resetDemo} title="Reset demo data" aria-label="Reset demo data">
+            <RotateCcw size={14} />
+          </button>
+          <button
+            className="sg-reset"
+            onClick={handleSignOut}
+            title={auth.user?.email ? `Sign out (${auth.user.email})` : "Sign out"}
+            aria-label="Sign out"
+          >
+            <LogOut size={14} />
+          </button>
+        </div>
       </header>
 
       {!garden?.location ? (

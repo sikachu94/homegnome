@@ -1,4 +1,4 @@
-import { supabase, ensureDevSession } from "./Supabaseclient.js";
+import { supabase } from "./Supabaseclient.js";
 
 // Same-origin by default (fine for a Vercel deploy where the frontend and
 // api/ live under one domain). Only set VITE_API_BASE_URL if the frontend
@@ -6,10 +6,16 @@ import { supabase, ensureDevSession } from "./Supabaseclient.js";
 const BASE = import.meta.env.VITE_API_BASE_URL || "";
 
 async function authHeader() {
-  let {
+  const {
     data: { session },
   } = await supabase.auth.getSession();
-  if (!session) session = await ensureDevSession();
+  if (!session) {
+    // app.jsx gates every screen that calls the API behind AuthScreen, so
+    // this should only fire if a session dies mid-request (e.g. its
+    // refresh token was revoked). Surface a clear error instead of quietly
+    // calling the API unauthenticated.
+    throw new Error("You've been signed out — please log in again.");
+  }
   return { Authorization: `Bearer ${session.access_token}` };
 }
 

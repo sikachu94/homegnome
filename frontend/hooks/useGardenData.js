@@ -8,8 +8,15 @@ import { apiGardens, apiCreateEvent, apiCreatePlanting, apiUpdateGarden, apiCrea
  * Owns plantings/containers/events/garden state and their persistence.
  * Supabase is the source of truth. Local storage is only used as an offline
  * fallback for the demo shell when the API cannot be reached.
+ *
+ * `authEnabled` gates the initial fetch: pass `!!session` from useAuth so
+ * this never calls the API before someone is actually signed in. GARDEN_ID
+ * is a leftover from the single-dev-user era — real accounts each get
+ * their own garden(s) from /api/gardens, so the `find` below almost never
+ * matches for a real user and this just falls back to `list[0]`, i.e.
+ * "whichever garden the signed-in account has".
  */
-export function useGardenData() {
+export function useGardenData(authEnabled = true) {
   const [plantings, setPlantings] = useState(null);
   const [containers, setContainers] = useState(null);
   const [events, setEvents] = useState(null);
@@ -47,6 +54,19 @@ export function useGardenData() {
   }, [persist, persistGarden]);
 
   useEffect(() => {
+    if (!authEnabled) {
+      // Signed out: drop anything previously loaded so a second person
+      // signing in on the same device/browser tab never sees a flash of
+      // the first person's garden before their own data comes back.
+      setLoaded(false);
+      setLoadError(null);
+      setPlantings(null);
+      setContainers(null);
+      setEvents(null);
+      setGarden(null);
+      setAllGardens([]);
+      return;
+    }
     (async () => {
       try {
         const response = await apiGardens();
@@ -55,7 +75,7 @@ export function useGardenData() {
         // sync from the very first load, not just after create/delete.
         setAllGardens(list);
         const remoteGarden = list.find((item) => item.id === GARDEN_ID) || list[0];
-        if (!remoteGarden) throw new Error(`Configured garden ${GARDEN_ID} was not returned by the API`);
+        if (!remoteGarden) throw new Error("No garden was returned by the API for this account");
         await applyGarden(remoteGarden);
         setLoadError(null);
         setLoaded(true);
@@ -69,7 +89,7 @@ export function useGardenData() {
         setLoaded(true);
       }
     })();
-  }, [applyGarden]);
+  }, [applyGarden, authEnabled]);
 
   const refresh = useCallback(async () => {
     const response = await apiGardens();

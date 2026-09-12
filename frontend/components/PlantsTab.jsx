@@ -224,10 +224,8 @@ export function PlantsTab({
 
         <div className="sg-garden-meta">
           <div className="sg-garden-meta-item"><span>Plants</span><strong>{plantings.length}</strong></div>
-          <div className="sg-garden-meta-item"><span>Containers</span><strong>{containers.length}</strong></div>
+          <div className="sg-garden-meta-item"><span>Pots</span><strong>{containers.length}</strong></div>
           <div className="sg-garden-meta-item"><span>Since</span><strong>{garden?.established_at ? fmtDate(garden.established_at) : "—"}</strong></div>
-          <div className="sg-garden-meta-item"><span>Location</span><strong>{garden?.label || "Not set"}</strong></div>
-          <div className="sg-garden-meta-item"><span>Zone</span><strong>{garden?.hardiness_zone || "—"}</strong></div>
         </div>
 
         <textarea
