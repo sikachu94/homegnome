@@ -1,5 +1,5 @@
 import { useState, useRef } from "react";
-import { ChevronLeft, ChevronDown, Box, Layers, MapPin, Bug, CircleCheck as CheckCircle2 } from "lucide-react";
+import { ChevronLeft, ChevronDown, Box, Layers, MapPin, Bug, Sprout, Sun, CircleCheck as CheckCircle2 } from "lucide-react";
 import { estimateSpeciesReference } from "../lib/speciesEstimates.js";
 import { projectPlanting, projectContainer } from "../lib/projections.js";
 import { fmtDate, fmtTime, formatComposition, groupByDay } from "../lib/format.js";
@@ -145,9 +145,22 @@ export function PlantDetail({ planting, plantings, containers, events, garden, a
 
       {planting.species_info && (
         <div className="sg-ideal-card">
-          {planting.species_info.latin_name && <span className="sg-latin-name">{planting.species_info.latin_name}</span>}
+          <div className="sg-ideal-card-head">
+            <div className="sg-ideal-card-names">
+              {planting.species_info.latin_name && <span className="sg-latin-name">{planting.species_info.latin_name}</span>}
+              {planting.species_info.usda_common_name && planting.species_info.usda_common_name !== planting.species && (
+                <span className="sg-common-name">Also known as {planting.species_info.usda_common_name}</span>
+              )}
+            </div>
+            {planting.species_info.usda_symbol && <span className="sg-pill muted">{planting.species_info.usda_symbol}</span>}
+          </div>
 
-          <h2>Ideal conditions</h2>
+          {meta && (
+            <div className="sg-care-row">
+              <span><Sprout size={13} /> Water every ~{meta.water_frequency_days}d</span>
+              <span><Sun size={13} /> {meta.sun_hours[0]}–{meta.sun_hours[1]}h sun/day</span>
+            </div>
+          )}
 
           {(planting.species_info.variety || planting.species_info.life_cycle_type || planting.species_info.harvest_type) && (
             <div className="sg-ideal-rows">
@@ -159,6 +172,7 @@ export function PlantDetail({ planting, plantings, containers, events, garden, a
 
           {hasUsdaData && (
             <div className="sg-usda-panel">
+              <div className="sg-usda-title">USDA reference data</div>
               <div className="sg-usda-rows">
                 {usda.ph_min != null && usda.ph_max != null && <div><span>Soil pH</span><strong>pH {usda.ph_min}–{usda.ph_max}</strong></div>}
                 {usda.precipitation_min_in != null && usda.precipitation_max_in != null && <div><span>Annual precipitation</span><strong>{usda.precipitation_min_in}–{usda.precipitation_max_in} in/yr</strong></div>}
