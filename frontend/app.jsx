@@ -1,5 +1,5 @@
 import React, { useState } from "react";
-import { Sprout, NotebookPen, MessageCircle, Calendar, RotateCcw, MapPin, CloudRain, Thermometer, Loader as Loader2 } from "lucide-react";
+import { Sprout, NotebookPen, MessageCircle, RotateCcw, MapPin, CloudRain, Thermometer, Loader as Loader2 } from "lucide-react";
 import gnomeLogo from "./assets/gnome_only.jpg";
 import "./styles.css";
 import { useGardenData } from "./hooks/useGardenData.js";
@@ -8,16 +8,16 @@ import { useWeather } from "./hooks/useWeather.js";
 import { PRESET_LOCATIONS } from "./lib/species.js";
 import { CaptureTab } from "./components/CaptureTab.jsx";
 import { PlantsTab } from "./components/PlantsTab.jsx";
-import { CalendarTab } from "./components/CalendarTab.jsx";
 import { ChatTab } from "./components/ChatTab.jsx";
 import { useToast, Toast } from "./lib/toast.jsx";
 
 // Shorter labels for the bottom nav (mockup); top nav keeps the fuller labels
 // on wider screens where there's room.
+// Calendar used to be its own tab; it now lives inside the Log tab as a
+// toggleable view next to "Recent activity" (see CaptureTab.jsx).
 const TABS = [
   { id: "capture", icon: NotebookPen, shortLabel: "Log" },
   { id: "plants", icon: Sprout, shortLabel: "Garden" },
-  { id: "calendar", icon: Calendar, shortLabel: "Calendar" },
   { id: "chat", icon: MessageCircle, shortLabel: "Ask" },
 ];
 
@@ -132,6 +132,7 @@ export default function App() {
           <CaptureTab
             gardenId={gardenId} plantings={plantings} containers={containers} events={events}
             addEvent={addEvent} resetSignal={resetKey} showToast={showToast} weather={weather}
+            calendarTasks={calendarTasks} onUpdateTask={updateCalendarTask} onCompleteTask={completeCalendarTask}
           />
         </div>
         <div hidden={tab !== "plants"}>
@@ -143,12 +144,6 @@ export default function App() {
             weather={weather}
             updateGardenLocal={updateGardenLocal} updateGardenAndPersist={updateGardenAndPersist}
             persistGarden={persistGarden} showToast={showToast}
-          />
-        </div>
-        <div hidden={tab !== "calendar"}>
-          <CalendarTab
-            plantings={plantings} events={events}
-            calendarTasks={calendarTasks} onUpdateTask={updateCalendarTask} onCompleteTask={completeCalendarTask}
           />
         </div>
         <div hidden={tab !== "chat"}>

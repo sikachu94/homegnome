@@ -1,5 +1,5 @@
 import { useState, useRef, useEffect } from "react";
-import { Mic, Square, Sparkles, Loader2, X, ImagePlus, ChevronDown, Plus } from "lucide-react";
+import { Mic, Square, Sparkles, Loader2, X, ImagePlus, ChevronDown, Plus, List, Calendar as CalendarIcon } from "lucide-react";
 import { apiExtract } from "../api.js";
 import {
   scopeOf, buildEvent, labelForEntity, labelForEventType, quickLogEvent, isAlertEvent, describeEventPayload,
@@ -10,6 +10,7 @@ import { fileToDataUrl } from "../lib/imageUtils.js";
 import { EventIcon } from "./EventIcon.jsx";
 import { Reminders } from "./Reminders.jsx";
 import { buildReminders, pickPriorityPlanting } from "../lib/reminders.js";
+import { GardenCalendar } from "./GardenCalendar.jsx";
 
 // How many of the most recent events to consider when building the day
 // groups below — high enough that the "collapse older days" behavior has
@@ -32,7 +33,10 @@ function defaultTargetsForType(type, plantings, events, weather) {
   return fallback ? new Set([fallback.id]) : new Set();
 }
 
-export function CaptureTab({ gardenId, plantings, containers, events, addEvent, resetSignal, showToast, weather, onNewPlant, manualEntryRequest }) {
+export function CaptureTab({
+  gardenId, plantings, containers, events, addEvent, resetSignal, showToast, weather, onNewPlant, manualEntryRequest,
+  calendarTasks, onUpdateTask, onCompleteTask,
+}) {
   const [note, setNote] = useState("");
   const [noteExpanded, setNoteExpanded] = useState(false);
   const [listening, setListening] = useState(false);
@@ -45,6 +49,11 @@ export function CaptureTab({ gardenId, plantings, containers, events, addEvent, 
   const recognitionRef = useRef(null);
   const photoInputRef = useRef(null);
   const manualFormRef = useRef(null);
+
+  // Toggle between the day-grouped activity log and the calendar view — the
+  // two ways of looking at the same underlying event/task data, sharing this
+  // section of the Log tab instead of living in a separate top-level tab.
+  const [logView, setLogView] = useState("activity");
 
   // Manual log-entry form state — the primary, non-AI way to log activity.
   // manualFormOpen/manualMoreOpen keep the form collapsed to a slim trigger
@@ -115,8 +124,9 @@ export function CaptureTab({ gardenId, plantings, containers, events, addEvent, 
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [manualEntryRequest]);
 
-  // Demo reset clears drafts, collapses days back to the default state, and
-  // resets the manual form to its default type/target — in-progress free
+  // Demo reset clears drafts, collapses days back to the default state,
+  // resets the manual form to its default type/target, and returns the
+  // Recent activity/Calendar toggle to its default view — in-progress free
   // text is left alone, same as before.
   useEffect(() => {
     setDrafts([]);
@@ -124,6 +134,7 @@ export function CaptureTab({ gardenId, plantings, containers, events, addEvent, 
     setExpandedDays(new Set(dayGroups.slice(0, 2).map((g) => g.label)));
     selectManualType("watering");
     setManualFormOpen(false);
+    setLogView("activity");
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [resetSignal]);
 
@@ -549,8 +560,38 @@ export function CaptureTab({ gardenId, plantings, containers, events, addEvent, 
       )}
 
       <div className="sg-recent">
-        <h2>Recent activity</h2>
-        {dayGroups.length === 0 ? (
+        <div className="sg-recent-head">
+          <div className="sg-view-toggle" role="tablist" aria-label="Log view">
+            <button
+              type="button"
+              role="tab"
+              aria-selected={logView === "activity"}
+              className={`sg-view-toggle-btn${logView === "activity" ? " active" : ""}`}
+              onClick={() => setLogView("activity")}
+            >
+              <List size={13} /> Recent activity
+            </button>
+            <button
+              type="button"
+              role="tab"
+              aria-selected={logView === "calendar"}
+              className={`sg-view-toggle-btn${logView === "calendar" ? " active" : ""}`}
+              onClick={() => setLogView("calendar")}
+            >
+              <CalendarIcon size={13} /> Calendar
+            </button>
+          </div>
+        </div>
+
+        {logView === "calendar" ? (
+          <GardenCalendar
+            plantings={plantings}
+            events={events}
+            calendarTasks={calendarTasks}
+            onUpdateTask={onUpdateTask}
+            onCompleteTask={onCompleteTask}
+          />
+        ) : dayGroups.length === 0 ? (
           <div className="sg-empty">Nothing logged yet. Try a quick action above, or write a note.</div>
         ) : (
           dayGroups.map((group) => {
