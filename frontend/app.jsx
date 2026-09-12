@@ -1,5 +1,6 @@
 import React, { useState } from "react";
 import { Sprout, NotebookPen, MessageCircle, RotateCcw, MapPin, CloudRain, Thermometer, Loader as Loader2, LogOut } from "lucide-react";
+import { Analytics } from "@vercel/analytics/react";
 import gnomeLogo from "./assets/gnome_only.jpg";
 import "./styles.css";
 import { useAuth } from "./hooks/useAuth.js";
@@ -109,6 +110,7 @@ export default function App() {
 
   return (
     <div className="sg-root">
+      <Analytics />
       <Toast toast={toast} />
 
       <header className="sg-header">
