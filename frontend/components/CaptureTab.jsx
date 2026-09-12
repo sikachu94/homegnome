@@ -155,8 +155,8 @@ export function CaptureTab({
 
   return (
     <section className="sg-panel">
-      <h1>What's happening in the garden?</h1>
-      <p className="sg-sub">Log an entry, snap a photo, or speak or type a note — whichever's fastest.</p>
+      <h1>Garden Log</h1>
+      <p className="sg-sub">keep track of all events</p>
 
       {plantings.length > 0 && (
         <div className="sg-reminders-section">
@@ -239,7 +239,7 @@ export function CaptureTab({
         <div className="sg-recent-head">
           <div className="sg-view-toggle" role="tablist" aria-label="Log view">
             <button type="button" role="tab" aria-selected={logView === "activity"} className={`sg-view-toggle-btn${logView === "activity" ? " active" : ""}`} onClick={() => setLogView("activity")}>
-              <List size={13} /> Recent activity
+              <List size={13} /> Activity
             </button>
             <button type="button" role="tab" aria-selected={logView === "calendar"} className={`sg-view-toggle-btn${logView === "calendar" ? " active" : ""}`} onClick={() => setLogView("calendar")}>
               <CalendarIcon size={13} /> Calendar

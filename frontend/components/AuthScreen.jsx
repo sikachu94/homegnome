@@ -69,8 +69,8 @@ export function AuthScreen({ signInWithGoogle, signInWithEmail, signUpWithEmail,
     return (
         <div className="as-root">
             <img src={gnomeLogo} alt="myGnomie" className="as-gnome" />
-            <h1 className="as-title">Welcome to myGnomie</h1>
-            <p className="as-sub">Sign in to keep your garden's log all to yourself.</p>
+            <h1 className="as-title">myGnomie Plant Log</h1>
+            <p className="as-sub">Let's get planting, myGnomie</p>
 
             <button className="as-google-btn" type="button" onClick={handleGoogle} disabled={googleLoading}>
                 {googleLoading ? <Loader2 className="spin" size={16} /> : <GoogleIcon />}

@@ -7,7 +7,7 @@ export function Reminders({ reminders, onLogWatering }) {
     return (
       <div className="sg-reminders-done">
         <CheckCircle2 size={16} />
-        <span>All caught up — nothing needs attention right now.</span>
+        <span>uneventful garden</span>
       </div>
     );
   }
